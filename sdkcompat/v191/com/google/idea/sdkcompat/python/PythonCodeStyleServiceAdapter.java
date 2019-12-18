@@ -13,18 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.google.idea.sdkcompat.openapi;
+package com.google.idea.sdkcompat.python;
 
-import com.intellij.openapi.vfs.VirtualFileSystem;
-import com.intellij.openapi.vfs.impl.VirtualFileManagerImpl;
-import com.intellij.openapi.vfs.newvfs.events.VFileCreateEvent;
-import com.intellij.util.messages.MessageBus;
-import java.util.List;
-import org.jetbrains.annotations.NotNull;
+import com.intellij.openapi.util.Key;
+import com.jetbrains.python.formatter.PyBlock;
 
-/** Compatibility layer for {@link VFileCreateEvent}. #api191 */
-public class VirtualFileManagerCompat extends VirtualFileManagerImpl {
-  public VirtualFileManagerCompat(List<VirtualFileSystem> fileSystems, @NotNull MessageBus bus) {
-    super(fileSystems, bus);
-  }
+/** IMPORT_GROUP_BEGIN moved to PythonCodeStyleService in 2019.3 #api192 */
+public class PythonCodeStyleServiceAdapter {
+
+  public static final Key<Boolean> IMPORT_GROUP_BEGIN = PyBlock.IMPORT_GROUP_BEGIN;
+
+  private PythonCodeStyleServiceAdapter() {}
 }

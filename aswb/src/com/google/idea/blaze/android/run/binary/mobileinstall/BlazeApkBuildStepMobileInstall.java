@@ -18,18 +18,17 @@ package com.google.idea.blaze.android.run.binary.mobileinstall;
 import com.android.ddmlib.IDevice;
 import com.android.tools.idea.run.ApkProvisionException;
 import com.android.tools.idea.run.DeviceFutures;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.google.devtools.build.lib.rules.android.deployinfo.AndroidDeployInfoOuterClass.AndroidDeployInfo;
-import com.google.idea.blaze.android.manifest.ParsedManifestService;
 import com.google.idea.blaze.android.run.deployinfo.BlazeAndroidDeployInfo;
 import com.google.idea.blaze.android.run.deployinfo.BlazeApkDeployInfoProtoHelper;
+import com.google.idea.blaze.android.run.deployinfo.BlazeApkDeployInfoProtoHelper.GetDeployInfoException;
 import com.google.idea.blaze.android.run.runner.BlazeAndroidDeviceSelector;
 import com.google.idea.blaze.android.run.runner.BlazeApkBuildStep;
-import com.google.idea.blaze.base.async.executor.ProgressiveTaskWithProgressIndicator;
 import com.google.idea.blaze.base.async.process.ExternalTask;
 import com.google.idea.blaze.base.async.process.LineProcessingOutputStream;
 import com.google.idea.blaze.base.async.process.PrintOutputLineProcessor;
@@ -37,7 +36,6 @@ import com.google.idea.blaze.base.command.BlazeCommand;
 import com.google.idea.blaze.base.command.BlazeCommandName;
 import com.google.idea.blaze.base.command.BlazeFlags;
 import com.google.idea.blaze.base.command.buildresult.BuildResultHelper;
-import com.google.idea.blaze.base.command.buildresult.BuildResultHelper.GetArtifactsException;
 import com.google.idea.blaze.base.command.buildresult.BuildResultHelperProvider;
 import com.google.idea.blaze.base.console.BlazeConsoleLineProcessorProvider;
 import com.google.idea.blaze.base.filecache.FileCaches;
@@ -45,7 +43,6 @@ import com.google.idea.blaze.base.model.BlazeProjectData;
 import com.google.idea.blaze.base.model.primitives.Label;
 import com.google.idea.blaze.base.model.primitives.WorkspaceRoot;
 import com.google.idea.blaze.base.scope.BlazeContext;
-import com.google.idea.blaze.base.scope.ScopedTask;
 import com.google.idea.blaze.base.scope.output.IssueOutput;
 import com.google.idea.blaze.base.scope.output.StatusOutput;
 import com.google.idea.blaze.base.settings.Blaze;
@@ -68,6 +65,7 @@ public class BlazeApkBuildStepMobileInstall implements BlazeApkBuildStep {
   private final Label label;
   private final ImmutableList<String> blazeFlags;
   private final ImmutableList<String> exeFlags;
+  private final BlazeApkDeployInfoProtoHelper deployInfoHelper;
   private BlazeAndroidDeployInfo deployInfo = null;
 
   /**
@@ -79,118 +77,109 @@ public class BlazeApkBuildStepMobileInstall implements BlazeApkBuildStep {
     return buildSystem == BuildSystem.Bazel ? "_incremental.deployinfo.pb" : "_mi.deployinfo.pb";
   }
 
+  @VisibleForTesting
+  public BlazeApkBuildStepMobileInstall(
+      Project project,
+      Label label,
+      ImmutableList<String> blazeFlags,
+      ImmutableList<String> exeFlags,
+      BlazeApkDeployInfoProtoHelper deployInfoHelper) {
+    this.project = project;
+    this.label = label;
+    this.blazeFlags = blazeFlags;
+    this.exeFlags = exeFlags;
+    this.deployInfoHelper = deployInfoHelper;
+  }
+
   public BlazeApkBuildStepMobileInstall(
       Project project,
       Label label,
       ImmutableList<String> blazeFlags,
       ImmutableList<String> exeFlags) {
-    this.project = project;
-    this.label = label;
-    this.blazeFlags = blazeFlags;
-    this.exeFlags = exeFlags;
+    this(project, label, blazeFlags, exeFlags, new BlazeApkDeployInfoProtoHelper());
   }
 
   @Override
-  public boolean build(
-      BlazeContext context, BlazeAndroidDeviceSelector.DeviceSession deviceSession) {
-    ScopedTask<Void> buildTask =
-        new ScopedTask<Void>(context) {
-          @Override
-          protected Void execute(BlazeContext context) {
-            BlazeProjectData projectData =
-                BlazeProjectDataManager.getInstance(project).getBlazeProjectData();
+  public void build(BlazeContext context, BlazeAndroidDeviceSelector.DeviceSession deviceSession) {
+    BlazeProjectData projectData =
+        BlazeProjectDataManager.getInstance(project).getBlazeProjectData();
 
-            if (projectData == null) {
-              IssueOutput.error("Missing project data. Please sync and try again.").submit(context);
-              return null;
-            }
-
-            DeviceFutures deviceFutures = deviceSession.deviceFutures;
-            assert deviceFutures != null;
-
-            context.output(new StatusOutput("Waiting for target device..."));
-            IDevice device = resolveDevice(context, deviceFutures);
-            if (device == null) {
-              return null;
-            }
-
-            context.output(new StatusOutput("Invoking mobile-install..."));
-            BlazeCommand.Builder command =
-                BlazeCommand.builder(
-                    Blaze.getBuildSystemProvider(project).getBinaryPath(project),
-                    BlazeCommandName.MOBILE_INSTALL);
-
-            command.addBlazeFlags(BlazeFlags.DEVICE, device.getSerialNumber());
-            // Redundant, but we need this to get around bug in bazel.
-            // https://github.com/bazelbuild/bazel/issues/4922
-            command.addBlazeFlags(
-                BlazeFlags.ADB_ARG + "-s ", BlazeFlags.ADB_ARG + device.getSerialNumber());
-
-            if (USE_SDK_ADB.getValue()) {
-              File adb = AndroidSdkUtils.getAdb(project);
-              if (adb != null) {
-                command.addBlazeFlags(BlazeFlags.ADB, adb.toString());
-              }
-            }
-
-            WorkspaceRoot workspaceRoot = WorkspaceRoot.fromProject(project);
-            File executionRoot = projectData.getBlazeInfo().getExecutionRoot();
-            final String deployInfoSuffix = getDeployInfoSuffix(Blaze.getBuildSystem(project));
-
-            try (BuildResultHelper buildResultHelper = BuildResultHelperProvider.create(project)) {
-              command
-                  .addTargets(label)
-                  .addBlazeFlags(blazeFlags)
-                  .addBlazeFlags(buildResultHelper.getBuildFlags())
-                  .addExeFlags(exeFlags);
-
-              SaveUtil.saveAllFiles();
-              int retVal =
-                  ExternalTask.builder(workspaceRoot)
-                      .addBlazeCommand(command.build())
-                      .context(context)
-                      .stdout(LineProcessingOutputStream.of(new PrintOutputLineProcessor(context)))
-                      .stderr(
-                          LineProcessingOutputStream.of(
-                              BlazeConsoleLineProcessorProvider.getAllStderrLineProcessors(
-                                  context)))
-                      .build()
-                      .run();
-              FileCaches.refresh(project, context);
-
-              if (retVal != 0) {
-                context.setHasError();
-                return null;
-              }
-
-              context.output(new StatusOutput("Reading deployment information..."));
-              AndroidDeployInfo deployInfoProto =
-                  BlazeApkDeployInfoProtoHelper.readDeployInfoProtoForTarget(
-                      label, buildResultHelper, fileName -> fileName.endsWith(deployInfoSuffix));
-              deployInfo = new BlazeAndroidDeployInfo(project, executionRoot, deployInfoProto);
-              ParsedManifestService.getInstance(project)
-                  .invalidateCachedManifests(deployInfo.getManifestFiles());
-            } catch (GetArtifactsException e) {
-              IssueOutput.error("Could not read apk deploy info from build: " + e.getMessage())
-                  .submit(context);
-            }
-            return null;
-          }
-        };
-
-    ListenableFuture<Void> buildFuture =
-        ProgressiveTaskWithProgressIndicator.builder(
-                project, String.format("Executing %s apk build", Blaze.buildSystemName(project)))
-            .submitTaskWithResult(buildTask);
-
-    try {
-      Futures.getChecked(buildFuture, ExecutionException.class);
-    } catch (ExecutionException e) {
-      context.setHasError();
-    } catch (CancellationException e) {
-      context.setCancelled();
+    if (projectData == null) {
+      IssueOutput.error("Missing project data. Please sync and try again.").submit(context);
+      return;
     }
-    return context.shouldContinue();
+
+    DeviceFutures deviceFutures = deviceSession.deviceFutures;
+    if (deviceFutures == null) {
+      IssueOutput.error("Error fetching devices!").submit(context);
+      return;
+    }
+
+    context.output(new StatusOutput("Waiting for target device..."));
+    IDevice device = resolveDevice(context, deviceFutures);
+    if (device == null) {
+      return;
+    }
+
+    context.output(new StatusOutput("Invoking mobile-install..."));
+    BlazeCommand.Builder command =
+        BlazeCommand.builder(
+            Blaze.getBuildSystemProvider(project).getBinaryPath(project),
+            BlazeCommandName.MOBILE_INSTALL);
+
+    command.addBlazeFlags(BlazeFlags.DEVICE, device.getSerialNumber());
+    // Redundant, but we need this to get around bug in bazel.
+    // https://github.com/bazelbuild/bazel/issues/4922
+    command.addBlazeFlags(
+        BlazeFlags.ADB_ARG + "-s ", BlazeFlags.ADB_ARG + device.getSerialNumber());
+
+    if (USE_SDK_ADB.getValue()) {
+      File adb = AndroidSdkUtils.getAdb(project);
+      if (adb != null) {
+        command.addBlazeFlags(BlazeFlags.ADB, adb.toString());
+      }
+    }
+
+    WorkspaceRoot workspaceRoot = WorkspaceRoot.fromProject(project);
+    File executionRoot = projectData.getBlazeInfo().getExecutionRoot();
+    final String deployInfoSuffix = getDeployInfoSuffix(Blaze.getBuildSystem(project));
+
+    try (BuildResultHelper buildResultHelper = BuildResultHelperProvider.create(project)) {
+      command
+          .addTargets(label)
+          .addBlazeFlags(blazeFlags)
+          .addBlazeFlags(buildResultHelper.getBuildFlags())
+          .addExeFlags(exeFlags);
+
+      SaveUtil.saveAllFiles();
+      int retVal =
+          ExternalTask.builder(workspaceRoot)
+              .addBlazeCommand(command.build())
+              .context(context)
+              .stdout(LineProcessingOutputStream.of(new PrintOutputLineProcessor(context)))
+              .stderr(
+                  LineProcessingOutputStream.of(
+                      BlazeConsoleLineProcessorProvider.getAllStderrLineProcessors(context)))
+              .build()
+              .run();
+      FileCaches.refresh(project, context);
+
+      if (retVal != 0) {
+        context.setHasError();
+        return;
+      }
+
+      context.output(new StatusOutput("Reading deployment information..."));
+      AndroidDeployInfo deployInfoProto =
+          deployInfoHelper.readDeployInfoProtoForTarget(
+              label, buildResultHelper, fileName -> fileName.endsWith(deployInfoSuffix));
+      deployInfo =
+          deployInfoHelper.extractDeployInfoAndInvalidateManifests(
+              project, executionRoot, deployInfoProto);
+    } catch (GetDeployInfoException e) {
+      IssueOutput.error("Could not read apk deploy info from build: " + e.getMessage())
+          .submit(context);
+    }
   }
 
   @Override

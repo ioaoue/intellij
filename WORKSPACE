@@ -18,7 +18,7 @@ http_archive(
 # and run integration tests.
 http_archive(
     name = "intellij_ce_2019_3",
-    build_file = "@//intellij_platform_sdk:BUILD.idea192",
+    build_file = "@//intellij_platform_sdk:BUILD.idea193",
     sha256 = "5bd69fc7588f0845facc7a0cf6c6b55d63217b19d8687e3cc6d7405e24a0db79",
     strip_prefix = "idea-IC-193.4386.10",
     url = "https://download.jetbrains.com/idea/ideaIC-193.4386.10.tar.gz",
@@ -37,7 +37,7 @@ http_archive(
 # integration tests.
 http_archive(
     name = "intellij_ue_2019_3",
-    build_file = "@//intellij_platform_sdk:BUILD.ue192",
+    build_file = "@//intellij_platform_sdk:BUILD.ue193",
     sha256 = "5bbaeaa580ae38622b8c6e9188551726f7d82fccde8ef1743cb141d902235e66",
     strip_prefix = "idea-IU-193.4386.10",
     url = "https://download.jetbrains.com/idea/ideaIU-193.4386.10.tar.gz",
@@ -50,6 +50,15 @@ http_archive(
     build_file = "@//intellij_platform_sdk:BUILD.clion",
     sha256 = "aedec47a538c9a2b654c30719ed7f0111af0a708a2aeb2a9f36a1c0767841a5c",
     url = "https://download.jetbrains.com/cpp/CLion-2019.2.5.tar.gz",
+)
+
+# The prerelease plugin api for CLion 2019.3. This is required to build CLwB,
+# and run integration tests.
+http_archive(
+    name = "clion_2019_3",
+    build_file = "@//intellij_platform_sdk:BUILD.clion193",
+    sha256 = "1c9bdeb55dda997a6cfce84ce2dbe2951f117709f9d37a3b65cfc2a68a359ecd",
+    url = "https://download.jetbrains.com/cpp/CLion-2019.3.1.tar.gz",
 )
 
 # Python plugin for Android Studio 3.5. Required at compile-time for python-specific features.
@@ -162,8 +171,15 @@ http_archive(
 http_archive(
     name = "android_studio_3_6",
     build_file = "@//intellij_platform_sdk:BUILD.android_studio36",
-    sha256 = "c1e98b7cf5abe56d7e1206d7284c1ff3ed6f2db8cfd56033a1617d09b2c9de73",
-    url = "https://dl.google.com/dl/android/studio/ide-zips/3.6.0.16/android-studio-ide-192.5994180-linux.tar.gz",
+    sha256 = "a91527184c2261931792f951c4d23a96b00899502a449b6b41a538a38e6b9962",
+    url = "https://dl.google.com/dl/android/studio/ide-zips/3.6.0.17/android-studio-ide-192.6018865-linux.tar.gz",
+)
+
+http_archive(
+    name = "android_studio_4_0",
+    build_file = "@//intellij_platform_sdk:BUILD.android_studio40",
+    sha256 = "5f70261eca51776a70129642fe6cbdab96501ca491da10d2b53d3c6ae3cb3afc",
+    url = "https://dl.google.com/dl/android/studio/ide-zips/4.0.0.4/android-studio-ide-192.6008643-linux.tar.gz",
 )
 
 # LICENSE: Common Public License 1.0
@@ -187,6 +203,14 @@ jvm_maven_import_external(
     name = "truth",
     artifact = "com.google.truth:truth:0.42",
     artifact_sha256 = "dd652bdf0c4427c59848ac0340fd6b6d20c2cbfaa3c569a8366604dbcda5214c",
+    licenses = ["notice"],  # Apache 2.0
+    server_urls = ["http://central.maven.org/maven2"],
+)
+
+jvm_maven_import_external(
+    name = "truth8",
+    artifact = "com.google.truth.extensions:truth-java8-extension:0.42",
+    artifact_sha256 = "cf9e095a6763bc33633b8844c3ebadffe3b082c81dd97a4d79b64ad88d305bc1",
     licenses = ["notice"],  # Apache 2.0
     server_urls = ["http://central.maven.org/maven2"],
 )
@@ -247,9 +271,9 @@ http_archive(
 
 http_archive(
     name = "build_bazel_integration_testing",
-    sha256 = "490554b98da4ce6e3e1e074e01b81e8440b760d4f086fccf50085a25528bf5cd",
-    strip_prefix = "bazel-integration-testing-922d2b04bfb9721ab14ff6d26d4a8a6ab847aa07",
-    url = "https://github.com/bazelbuild/bazel-integration-testing/archive/922d2b04bfb9721ab14ff6d26d4a8a6ab847aa07.zip",
+    sha256 = "e055ff971787a27d6942a83ffd182953988c88dfa82e89138ccc83bf410a65d6",
+    strip_prefix = "bazel-integration-testing-2a4f6c244312c036e0f3a125ee6086637ee7723b",
+    url = "https://github.com/bazelbuild/bazel-integration-testing/archive/2a4f6c244312c036e0f3a125ee6086637ee7723b.zip",
 )
 
 load("@build_bazel_integration_testing//tools:bazel_java_integration_test.bzl", "bazel_java_integration_test_deps")
