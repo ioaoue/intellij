@@ -17,6 +17,7 @@ package com.google.idea.blaze.android.projectsystem;
 
 import com.android.ide.common.repository.GradleCoordinate;
 import com.android.ide.common.util.PathString;
+import com.android.manifmerger.ManifestSystemProperty;
 import com.android.projectmodel.ExternalLibrary;
 import com.android.projectmodel.Library;
 import com.android.projectmodel.SelectiveResourceFolder;
@@ -26,6 +27,7 @@ import com.android.tools.idea.projectsystem.CapabilityStatus;
 import com.android.tools.idea.projectsystem.CapabilitySupported;
 import com.android.tools.idea.projectsystem.DependencyManagementException;
 import com.android.tools.idea.projectsystem.DependencyType;
+import com.android.tools.idea.projectsystem.ManifestOverrides;
 import com.android.tools.idea.projectsystem.NamedModuleTemplate;
 import com.android.tools.idea.projectsystem.SampleDataDirectoryProvider;
 import com.android.tools.idea.projectsystem.ScopeType;
@@ -38,7 +40,6 @@ import com.google.idea.blaze.android.sync.model.AarLibrary;
 import com.google.idea.blaze.android.sync.model.AndroidResourceModule;
 import com.google.idea.blaze.android.sync.model.AndroidResourceModuleRegistry;
 import com.google.idea.blaze.android.sync.model.BlazeAndroidSyncData;
-import com.google.idea.blaze.android.sync.model.BlazeResourceLibrary;
 import com.google.idea.blaze.base.command.buildresult.OutputArtifactResolver;
 import com.google.idea.blaze.base.ideinfo.ArtifactLocation;
 import com.google.idea.blaze.base.ideinfo.Dependency;
@@ -74,6 +75,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -191,7 +193,8 @@ public abstract class BlazeModuleSystemBase implements AndroidModuleSystem, Blaz
                   project, blazeProjectData.getArtifactLocationDecoder(), buildFile),
               "Fail to find file %s",
               buildFile.getRelativePath());
-      VirtualFile buildVirtualFile = VfsUtils.resolveVirtualFile(buildIoFile);
+      VirtualFile buildVirtualFile =
+          VfsUtils.resolveVirtualFile(buildIoFile, /* refreshIfNeeded= */ true);
       if (buildVirtualFile != null) {
         fileEditorManager.openFile(buildVirtualFile, true);
       }
@@ -329,7 +332,12 @@ public abstract class BlazeModuleSystemBase implements AndroidModuleSystem, Blaz
         .collect(Collectors.toList());
   }
 
-  @Override
+  // @Override #api4.1
+  public Collection<Library> getResolvedLibraryDependencies() {
+    return getResolvedDependentLibraries();
+  }
+
+  // @Override #api4.0
   public Collection<Library> getResolvedDependentLibraries() {
     BlazeProjectData blazeProjectData =
         BlazeProjectDataManager.getInstance(project).getBlazeProjectData();
@@ -353,10 +361,6 @@ public abstract class BlazeModuleSystemBase implements AndroidModuleSystem, Blaz
           if (externalLibrary != null) {
             libraries.add(externalLibraryInterner.intern(externalLibrary));
           }
-        } else if (library instanceof BlazeResourceLibrary) {
-          libraries.add(
-              externalLibraryInterner.intern(
-                  toExternalLibrary((BlazeResourceLibrary) library, decoder)));
         } else if (library instanceof BlazeJarLibrary) {
           ExternalLibrary externalLibrary = toExternalLibrary((BlazeJarLibrary) library, decoder);
           if (externalLibrary != null) {
@@ -381,13 +385,6 @@ public abstract class BlazeModuleSystemBase implements AndroidModuleSystem, Blaz
     }
 
     for (String libraryKey : registry.get(module).resourceLibraryKeys) {
-      ImmutableMap<String, BlazeResourceLibrary> resourceLibraries =
-          androidSyncData.importResult.resourceLibraries;
-      if (resourceLibraries != null && resourceLibraries.containsKey(libraryKey)) {
-        libraries.add(
-            externalLibraryInterner.intern(
-                toExternalLibrary(resourceLibraries.get(libraryKey), decoder)));
-      }
       ImmutableMap<String, AarLibrary> aarLibraries = androidSyncData.importResult.aarLibraries;
       if (aarLibraries != null && aarLibraries.containsKey(libraryKey)) {
         ExternalLibrary externalLibrary = toExternalLibrary(aarLibraries.get(libraryKey), decoder);
@@ -397,32 +394,6 @@ public abstract class BlazeModuleSystemBase implements AndroidModuleSystem, Blaz
       }
     }
     return libraries.build();
-  }
-
-  private ExternalLibrary toExternalLibrary(
-      BlazeResourceLibrary library, ArtifactLocationDecoder decoder) {
-    PathString resFolder =
-        new PathString(
-            Preconditions.checkNotNull(
-                OutputArtifactResolver.resolve(project, decoder, library.root),
-                "Fail to find file %s",
-                library.root));
-    List<PathString> resources =
-        library.resources.isEmpty()
-            ? null
-            : library.resources.stream()
-                .map(relativePath -> resFolder.resolve(relativePath))
-                .collect(Collectors.toList());
-    return new ExternalLibrary(library.key.toString())
-        .withManifestFile(
-            library.manifest == null
-                ? null
-                : new PathString(
-                    Preconditions.checkNotNull(
-                        OutputArtifactResolver.resolve(project, decoder, library.manifest),
-                        "Fail to find file %s",
-                        library.manifest.getRelativePath())))
-        .withResFolder(new SelectiveResourceFolder(resFolder, resources));
   }
 
   @Nullable
@@ -481,6 +452,70 @@ public abstract class BlazeModuleSystemBase implements AndroidModuleSystem, Blaz
   }
 
   // #api3.5 @Override
+  public ManifestOverrides getManifestOverrides() {
+    BlazeProjectData projectData =
+        BlazeProjectDataManager.getInstance(project).getBlazeProjectData();
+    if (projectData == null) {
+      return new ManifestOverrides();
+    }
+    TargetKey targetKey = AndroidResourceModuleRegistry.getInstance(project).getTargetKey(module);
+    if (targetKey == null) {
+      return new ManifestOverrides();
+    }
+    TargetIdeInfo target = projectData.getTargetMap().get(targetKey);
+    if (target == null || target.getAndroidIdeInfo() == null) {
+      return new ManifestOverrides();
+    }
+    Map<String, String> manifestValues = target.getAndroidIdeInfo().getManifestValues();
+    ImmutableMap.Builder<ManifestSystemProperty, String> directOverrides = ImmutableMap.builder();
+    ImmutableMap.Builder<String, String> placeholders = ImmutableMap.builder();
+    manifestValues.forEach(
+        (key, value) -> processManifestValue(key, value, directOverrides, placeholders));
+    return new ManifestOverrides(directOverrides.build(), placeholders.build());
+  }
+
+  /**
+   * Puts the key-value pair from a target's manifest_values map into either {@code directOverrides}
+   * if the key corresponds to a manifest attribute that Blaze allows you to override directly, or
+   * {@code placeholders} otherwise.
+   *
+   * @see <a
+   *     href="https://docs.bazel.build/versions/master/be/android.html#android_binary.manifest_values">manifest_values</a>
+   */
+  private static void processManifestValue(
+      String key,
+      String value,
+      ImmutableMap.Builder<ManifestSystemProperty, String> directOverrides,
+      ImmutableMap.Builder<String, String> placeholders) {
+    switch (key) {
+      case "applicationId":
+        directOverrides.put(ManifestSystemProperty.PACKAGE, value);
+        break;
+      case "versionCode":
+        directOverrides.put(ManifestSystemProperty.VERSION_CODE, value);
+        break;
+      case "versionName":
+        directOverrides.put(ManifestSystemProperty.VERSION_NAME, value);
+        break;
+      case "minSdkVersion":
+        directOverrides.put(ManifestSystemProperty.MIN_SDK_VERSION, value);
+        break;
+      case "targetSdkVersion":
+        directOverrides.put(ManifestSystemProperty.TARGET_SDK_VERSION, value);
+        break;
+      case "maxSdkVersion":
+        directOverrides.put(ManifestSystemProperty.MAX_SDK_VERSION, value);
+        break;
+      case "packageName":
+        // From the doc: "packageName will be ignored and will be set from either applicationId if
+        // specified or the package in manifest"
+        break;
+      default:
+        placeholders.put(key, value);
+    }
+  }
+
+  // @Override #api3.5
   public GlobalSearchScope getResolveScope(ScopeType scopeType) {
     // Bazel projects have either a workspace module, or a resource module. In both cases, we just
     // want to ignore the currently specified module level dependencies and use the global set of

@@ -19,6 +19,8 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -58,10 +60,15 @@ public final class ParsedBepOutput {
     Set<String> topLevelFileSets = new HashSet<>();
     Map<String, FileSet.Builder> fileSets = new LinkedHashMap<>();
     ImmutableSetMultimap.Builder<String, String> targetToFileSets = ImmutableSetMultimap.builder();
+    String localExecRoot = null;
+    String buildId = null;
     long startTimeMillis = 0L;
 
     while ((event = stream.getNext()) != null) {
       switch (event.getId().getIdCase()) {
+        case WORKSPACE:
+          localExecRoot = event.getWorkspaceInfo().getLocalExecRoot();
+          continue;
         case CONFIGURATION:
           configIdToMnemonic.put(
               event.getId().getConfiguration().getId(), event.getConfiguration().getMnemonic());
@@ -99,6 +106,7 @@ public final class ParsedBepOutput {
                   });
           continue;
         case STARTED:
+          buildId = Strings.emptyToNull(event.getStarted().getUuid());
           startTimeMillis = event.getStarted().getStartTimeMillis();
           continue;
         default: // continue
@@ -107,7 +115,8 @@ public final class ParsedBepOutput {
     ImmutableMap<String, FileSet> filesMap =
         fillInTransitiveFileSetData(
             fileSets, topLevelFileSets, configIdToMnemonic, startTimeMillis);
-    return new ParsedBepOutput(filesMap, targetToFileSets.build(), startTimeMillis);
+    return new ParsedBepOutput(
+        buildId, localExecRoot, filesMap, targetToFileSets.build(), startTimeMillis);
   }
 
   private static List<String> getFileSets(BuildEventStreamProtos.OutputGroup group) {
@@ -150,6 +159,11 @@ public final class ParsedBepOutput {
                 Map.Entry::getKey, e -> e.getValue().build(configIdToMnemonic, startTimeMillis)));
   }
 
+  @Nullable public final String buildId;
+
+  /** A path to the local execroot */
+  @Nullable private final String localExecRoot;
+
   /** A map from file set ID to file set, with the same ordering as the BEP stream. */
   private final ImmutableMap<String, FileSet> fileSets;
 
@@ -158,13 +172,24 @@ public final class ParsedBepOutput {
 
   final long syncStartTimeMillis;
 
-  private ParsedBepOutput(
+  @VisibleForTesting
+  public ParsedBepOutput(
+      @Nullable String buildId,
+      @Nullable String localExecRoot,
       ImmutableMap<String, FileSet> fileSets,
       ImmutableSetMultimap<String, String> targetFileSets,
       long syncStartTimeMillis) {
+    this.buildId = buildId;
+    this.localExecRoot = localExecRoot;
     this.fileSets = fileSets;
     this.targetFileSets = targetFileSets;
     this.syncStartTimeMillis = syncStartTimeMillis;
+  }
+
+  /** Returns the local execroot. */
+  @Nullable
+  public String getLocalExecRoot() {
+    return localExecRoot;
   }
 
   /** Returns all output artifacts of the build. */

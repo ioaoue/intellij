@@ -17,18 +17,16 @@ package com.google.idea.blaze.base.sync.libraries;
 
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.google.idea.blaze.base.io.VfsUtils;
 import com.intellij.navigation.ItemPresentation;
 import com.intellij.openapi.roots.SyntheticLibrary;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.psi.stubs.StubUpdatingIndex;
-import com.intellij.util.indexing.FileBasedIndex;
 import icons.BlazeIcons;
 import java.io.File;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import javax.annotation.Nullable;
@@ -41,7 +39,7 @@ import javax.swing.Icon;
 public final class BlazeExternalSyntheticLibrary extends SyntheticLibrary
     implements ItemPresentation {
   private final String presentableText;
-  private final Set<File> files;
+  private final ImmutableSet<File> files;
   private final Set<VirtualFile> validFiles;
 
   /**
@@ -53,9 +51,14 @@ public final class BlazeExternalSyntheticLibrary extends SyntheticLibrary
    */
   BlazeExternalSyntheticLibrary(String presentableText, Collection<File> files) {
     this.presentableText = presentableText;
-    this.files = new HashSet<>();
-    this.validFiles = Sets.newConcurrentHashSet();
-    addFiles(files, false);
+    this.files = ImmutableSet.copyOf(files);
+    this.validFiles =
+        Sets.newConcurrentHashSet(
+            files.stream()
+                // this happens on the EDT, don't refresh
+                .map(f -> VfsUtils.resolveVirtualFile(f, /* refreshIfNeeded= */ false))
+                .filter(Objects::nonNull)
+                .collect(toImmutableSet()));
   }
 
   @Nullable
@@ -81,21 +84,9 @@ public final class BlazeExternalSyntheticLibrary extends SyntheticLibrary
                   .map(VfsUtil::virtualToIoFile)
                   .collect(toImmutableSet()))
           .stream()
-          .map(VfsUtils::resolveVirtualFile)
+          .map(file -> VfsUtils.resolveVirtualFile(file, /* refreshIfNeeded= */ false))
           .filter(Objects::nonNull)
           .forEach(validFiles::add);
-    }
-  }
-
-  public void addFiles(Collection<File> files, boolean reindex) {
-    if (this.files.addAll(files)) {
-      files.stream()
-          .map(VfsUtils::resolveVirtualFile)
-          .filter(Objects::nonNull)
-          .forEach(this.validFiles::add);
-      if (reindex) {
-        FileBasedIndex.getInstance().requestRebuild(StubUpdatingIndex.INDEX_ID);
-      }
     }
   }
 
