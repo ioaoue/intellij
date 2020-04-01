@@ -20,62 +20,50 @@ import com.android.resources.ResourceType;
 import com.android.tools.idea.res.LocalResourceRepository;
 import com.android.tools.idea.res.ResourceRepositoryManager;
 import com.android.tools.idea.res.ResourceRepositoryRClass;
-import com.google.common.base.Verify;
 import com.intellij.openapi.module.Module;
 import com.intellij.psi.PsiManager;
 import org.jetbrains.android.augment.AndroidLightField;
-import org.jetbrains.annotations.NotNull;
+import org.jetbrains.android.facet.AndroidFacet;
 
 /** Blaze implementation of an R class based on resource repositories. */
 public class BlazeRClass extends ResourceRepositoryRClass {
 
-  @NotNull private final Module myModule;
+  private final AndroidFacet androidFacet;
 
-  public BlazeRClass(
-      @NotNull PsiManager psiManager, @NotNull Module module, @NotNull String packageName) {
+  public BlazeRClass(PsiManager psiManager, AndroidFacet androidFacet, String packageName) {
     super(
         psiManager,
         new ResourcesSource() {
-          @NotNull
           @Override
           public String getPackageName() {
             return packageName;
           }
 
-          @NotNull
           @Override
           public LocalResourceRepository getResourceRepository() {
-            //noinspection ConstantConditions: verifyNotNull will not return null.
-            return Verify.verifyNotNull(
-                ResourceRepositoryManager.getAppResources(module),
-                "Failed to get Android resources for module %s",
-                module);
+            return ResourceRepositoryManager.getAppResources(androidFacet);
           }
 
-          @NotNull
           @Override
           public ResourceNamespace getResourceNamespace() {
             return ResourceNamespace.RES_AUTO;
           }
 
-          @NotNull
           @Override
           public AndroidLightField.FieldModifier getFieldModifier() {
             return AndroidLightField.FieldModifier.NON_FINAL;
           }
 
           @Override
-          public boolean isPublic(
-              @NotNull ResourceType resourceType, @NotNull String resourceName) {
+          public boolean isPublic(ResourceType resourceType, String resourceName) {
             return true;
           }
         });
-    myModule = module;
-    setModuleInfo(module, false);
+    this.androidFacet = androidFacet;
+    setModuleInfo(getModule(), false);
   }
 
-  @NotNull
   public Module getModule() {
-    return myModule;
+    return androidFacet.getModule();
   }
 }

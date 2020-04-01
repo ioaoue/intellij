@@ -19,6 +19,7 @@ import static com.android.tools.idea.profilers.AndroidProfilerLaunchTaskContribu
 
 import com.android.ddmlib.IDevice;
 import com.android.sdklib.AndroidVersion;
+import com.android.tools.deployer.ApkVerifierTracker;
 import com.android.tools.idea.profilers.AndroidProfilerLaunchTaskContributor;
 import com.android.tools.idea.run.AndroidLaunchTasksProvider;
 import com.android.tools.idea.run.ApkProvisionException;
@@ -38,7 +39,6 @@ import com.android.tools.idea.run.util.ProcessHandlerLaunchStatus;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import com.google.idea.blaze.android.run.CheckApkDebuggableTaskCompat;
 import com.google.idea.blaze.android.run.LaunchStatusCompat;
 import com.google.idea.blaze.android.run.binary.UserIdHelper;
 import com.intellij.execution.ExecutionException;
@@ -49,7 +49,7 @@ import java.util.Set;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-/** Normal launch tasks provider. */
+/** Normal launch tasks provider. #api4.1 */
 public class BlazeAndroidLaunchTasksProvider implements LaunchTasksProvider {
   private static final Logger LOG = Logger.getInstance(BlazeAndroidLaunchTasksProvider.class);
 
@@ -84,8 +84,24 @@ public class BlazeAndroidLaunchTasksProvider implements LaunchTasksProvider {
       throws ExecutionException {
     final List<LaunchTask> launchTasks = Lists.newArrayList();
 
+    String packageName;
+    try {
+      packageName = applicationIdProvider.getPackageName();
+    } catch (ApkProvisionException e) {
+      LOG.error(e);
+      LaunchStatusCompat.terminateLaunch(
+          launchStatus, "Unable to determine application id: " + e, true);
+      return ImmutableList.of();
+    }
+
     Integer userId = runContext.getUserId(device, consolePrinter);
-    launchOptionsBuilder.setPmInstallOptions(UserIdHelper.getFlagsFromUserId(userId));
+    String pmInstallOption = UserIdHelper.getFlagsFromUserId(userId);
+    String skipVerification =
+        ApkVerifierTracker.getSkipVerificationInstallationFlag(device, packageName);
+    if (skipVerification != null) {
+      pmInstallOption = String.format("%s %s", pmInstallOption, skipVerification);
+    }
+    launchOptionsBuilder.setPmInstallOptions(pmInstallOption);
 
     LaunchOptions launchOptions = launchOptionsBuilder.build();
 
@@ -110,21 +126,17 @@ public class BlazeAndroidLaunchTasksProvider implements LaunchTasksProvider {
       return launchTasks;
     }
 
-    String packageName;
     try {
       if (launchOptions.isDebug()) {
-        launchTasks.add(
-            new CheckApkDebuggableTaskCompat(runContext.getBuildStep().getDeployInfo()));
+        launchTasks.add(new CheckApkDebuggableTask(runContext.getBuildStep().getDeployInfo()));
       }
 
-      packageName = applicationIdProvider.getPackageName();
       StringBuilder amStartOptions = new StringBuilder();
 
       if (isProfilerLaunch(launchOptions)) {
-        AndroidProfilerLaunchTaskContributor contributor =
-            new AndroidProfilerLaunchTaskContributor();
         String amOptions =
-            contributor.getAmStartOptions(project, packageName, launchOptions, device);
+            AndroidProfilerLaunchTaskContributor.getAmStartOptions(
+                project, packageName, launchOptions, device);
         amStartOptions.append(amStartOptions.length() == 0 ? "" : " ").append(amOptions);
 
         launchTasks.add(

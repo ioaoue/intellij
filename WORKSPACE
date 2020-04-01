@@ -229,22 +229,22 @@ http_archive(
 http_archive(
     name = "android_studio_3_6",
     build_file = "@//intellij_platform_sdk:BUILD.android_studio36",
-    sha256 = "e754dc9db31a5c222f230683e3898dcab122dfe7bdb1c4174474112150989fd7",
-    url = "https://dl.google.com/dl/android/studio/ide-zips/3.6.1.0/android-studio-ide-192.6241897-linux.tar.gz",
+    sha256 = "79c3e7069228de5db1c9252e078fcbe9b7d56cc54c8ce6f87034685b298f2413",
+    url = "https://dl.google.com/dl/android/studio/ide-zips/3.6.2.0/android-studio-ide-192.6308749-linux.tar.gz",
 )
 
 http_archive(
     name = "android_studio_4_0",
     build_file = "@//intellij_platform_sdk:BUILD.android_studio40",
-    sha256 = "aec79a78c9d26744c407ab5caa4863262bb8c2de6a415248859168cd38297745",
-    url = "https://dl.google.com/dl/android/studio/ide-zips/4.0.0.10/android-studio-ide-193.6220182-linux.tar.gz",
+    sha256 = "156ce23e67a89af3a1080c0ab922db591ae0af5e220b67e08fc7ce0e04dc591c",
+    url = "https://dl.google.com/dl/android/studio/ide-zips/4.0.0.12/android-studio-ide-193.6296804-linux.tar.gz",
 )
 
 http_archive(
     name = "android_studio_4_1",
     build_file = "@//intellij_platform_sdk:BUILD.android_studio41",
-    sha256 = "1deb9157d8a9b21053fb50031a0b307dd2cd1b460caa923f794ca2de8f733a56",
-    url = "https://dl.google.com/dl/android/studio/ide-zips/4.1.0.1/android-studio-ide-193.6224510-linux.tar.gz",
+    sha256 = "3cabd426f5064aad3fd7afa60a00581116b4d4c7847076ac8e4d5287075064a5",
+    url = "https://dl.google.com/dl/android/studio/ide-zips/4.1.0.4/android-studio-ide-193.6325121-linux.tar.gz",
 )
 
 # LICENSE: Common Public License 1.0
@@ -282,16 +282,24 @@ jvm_maven_import_external(
 
 jvm_maven_import_external(
     name = "mockito",
-    artifact = "org.mockito:mockito-core:1.10.19",
-    artifact_sha256 = "d5831ee4f71055800821a34a3051cf1ed5b3702f295ffebd50f65fb5d81a71b8",
+    artifact = "org.mockito:mockito-core:3.3.0",
+    artifact_sha256 = "fc1a1f2d1d64566bc31ee36d8214059f2adbe303d9109e5cc0e99685741c57c2",
     licenses = ["notice"],  # Apache 2.0
     server_urls = ["https://repo1.maven.org/maven2"],
 )
 
 jvm_maven_import_external(
-    name = "objenesis",
-    artifact = "org.objenesis:objenesis:1.3",
-    artifact_sha256 = "dd4ef3d3091063a4fec578cbb2bbe6c1f921c00091ba2993dcd9afd25ff9444a",
+    name = "bytebuddy",
+    artifact = "net.bytebuddy:byte-buddy:1.10.5",
+    artifact_sha256 = "3c9c603970bb9d68572c1aa29e9ae6b477d602922977a04bfa5f3b5465d7d1f4",
+    licenses = ["notice"],  # Apache 2.0
+    server_urls = ["https://repo1.maven.org/maven2"],
+)
+
+jvm_maven_import_external(
+    name = "bytebuddy-agent",
+    artifact = "net.bytebuddy:byte-buddy-agent:1.10.5",
+    artifact_sha256 = "290c9930965ef5810ddb15baf3b3647ce952f40fa2f0af82d5f669e04ba87e5b",
     licenses = ["notice"],  # Apache 2.0
     server_urls = ["https://repo1.maven.org/maven2"],
 )

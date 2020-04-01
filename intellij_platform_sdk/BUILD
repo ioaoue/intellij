@@ -216,6 +216,14 @@ config_setting(
 )
 
 config_setting(
+    name = "android-studio-4.0-mac",
+    values = {
+        "cpu": "darwin_x86_64",
+        "define": "ij_product=android-studio-4.0",
+    },
+)
+
+config_setting(
     name = "android-studio-4.1",
     values = {
         "define": "ij_product=android-studio-4.1",
@@ -312,9 +320,11 @@ java_library(
     testonly = 1,
     visibility = [":test_libs_visibility"],
     exports = [
+        ":objenesis",
         "//third_party:truth",
+        "@bytebuddy-agent//jar",
+        "@bytebuddy//jar",
         "@mockito//jar",
-        "@objenesis//jar",
     ],
 )
 
@@ -368,6 +378,17 @@ java_library(
     name = "truth",
     testonly = 1,
     exports = ["//third_party:truth"],
+)
+
+# The version of objenesis bundled with the IntelliJ plugin API
+java_library(
+    name = "objenesis",
+    neverlink = 1,
+    exports = select_from_plugin_api_directory(
+        android_studio = [":objenesis"],
+        clion = [":objenesis"],
+        intellij = [":objenesis"],
+    ),
 )
 
 # IntelliJ Coverage plugin
