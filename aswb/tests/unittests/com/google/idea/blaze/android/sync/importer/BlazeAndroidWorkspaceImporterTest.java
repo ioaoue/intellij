@@ -133,11 +133,12 @@ public class BlazeAndroidWorkspaceImporterTest extends BlazeTestCase {
       new WorkspaceLanguageSettings(
           WorkspaceType.ANDROID, ImmutableSet.of(LanguageClass.ANDROID, LanguageClass.JAVA));
   private ExtensionPointImpl<GeneratedResourceRetentionFilter> retentionFilterEp;
+  private MockExperimentService experimentService;
 
   @Override
   protected void initTest(Container applicationServices, Container projectServices) {
-    MockExperimentService mockExperimentService = new MockExperimentService();
-    applicationServices.register(ExperimentService.class, mockExperimentService);
+    experimentService = new MockExperimentService();
+    applicationServices.register(ExperimentService.class, experimentService);
 
     BlazeExecutor blazeExecutor = new MockBlazeExecutor();
     applicationServices.register(BlazeExecutor.class, blazeExecutor);
@@ -806,7 +807,8 @@ public class BlazeAndroidWorkspaceImporterTest extends BlazeTestCase {
   }
 
   @Test
-  public void testConflictingResourceRClasses() {
+  public void testConflictingResourceRClasses_picksBestResourceClass() {
+    experimentService.setExperiment(MockBlazeAndroidWorkspaceImporter.mergeResourcesEnabled, false);
     ProjectView projectView =
         ProjectView.builder()
             .add(
@@ -848,6 +850,56 @@ public class BlazeAndroidWorkspaceImporterTest extends BlazeTestCase {
             .build();
     BlazeAndroidImportResult result = importWorkspace(workspaceRoot, targetMapBuilder, projectView);
     errorCollector.assertIssueContaining("Multiple R classes generated");
+
+    assertThat(result.androidResourceModules).containsExactly(expectedAndroidResourceModule);
+  }
+
+  @Test
+  public void testConflictingResourceRClasses_mergesClassesIntoOne() {
+    experimentService.setExperiment(MockBlazeAndroidWorkspaceImporter.mergeResourcesEnabled, true);
+    ProjectView projectView =
+        ProjectView.builder()
+            .add(
+                ListSection.builder(DirectorySection.KEY)
+                    .add(DirectoryEntry.include(new WorkspacePath("java/example"))))
+            .build();
+
+    TargetMapBuilder targetMapBuilder =
+        TargetMapBuilder.builder()
+            .addTarget(
+                TargetIdeInfo.builder()
+                    .setLabel("//java/example:lib")
+                    .setBuildFile(source("java/example/BUILD"))
+                    .setKind("android_library")
+                    .setAndroidInfo(
+                        AndroidIdeInfo.builder()
+                            .setManifestFile(source("java/example/AndroidManifest.xml"))
+                            .addResource(source("java/example/res"))
+                            .setGenerateResourceClass(true)
+                            .setResourceJavaPackage("com.google.android.example"))
+                    .addDependency("//java/example2:resources")
+                    .build())
+            .addTarget(
+                TargetIdeInfo.builder()
+                    .setLabel("//java/example:lib2")
+                    .setBuildFile(source("java/example2/BUILD"))
+                    .setKind("android_library")
+                    .setAndroidInfo(
+                        AndroidIdeInfo.builder()
+                            .setManifestFile(source("java/example2/AndroidManifest.xml"))
+                            .addResource(source("java/example/res2"))
+                            .setGenerateResourceClass(true)
+                            .setResourceJavaPackage("com.google.android.example"))
+                    .build());
+
+    AndroidResourceModule expectedAndroidResourceModule =
+        AndroidResourceModule.builder(TargetKey.forPlainTarget(Label.create("//java/example:lib")))
+            .addResourceAndTransitiveResource(source("java/example/res"))
+            .addResourceAndTransitiveResource(source("java/example/res2"))
+            .build();
+    BlazeAndroidImportResult result = importWorkspace(workspaceRoot, targetMapBuilder, projectView);
+    errorCollector.assertIssueContaining("Multiple R classes generated");
+    errorCollector.assertIssueContaining("Merging Resources...");
 
     assertThat(result.androidResourceModules).containsExactly(expectedAndroidResourceModule);
   }
@@ -1476,6 +1528,160 @@ public class BlazeAndroidWorkspaceImporterTest extends BlazeTestCase {
         assertThat(aarFilter.test(jarLibrary)).isFalse();
       }
     }
+  }
+
+  @Test
+  public void testResJarFilter_resJarFromDependency() {
+    ProjectView projectView =
+        ProjectView.builder()
+            .add(
+                ListSection.builder(DirectorySection.KEY)
+                    .add(DirectoryEntry.include(new WorkspacePath("java/example"))))
+            .build();
+
+    TargetMapBuilder targetMapBuilder =
+        TargetMapBuilder.builder()
+            .addTarget(
+                TargetIdeInfo.builder()
+                    .setLabel("//java/example:lib")
+                    .setBuildFile(source("java/example/BUILD"))
+                    .setKind(AndroidBlazeRules.RuleTypes.ANDROID_LIBRARY.getKind())
+                    .setAndroidInfo(
+                        AndroidIdeInfo.builder()
+                            .setManifestFile(source("java/example/AndroidManifest.xml"))
+                            .addResource(source("java/example/res"))
+                            .setGenerateResourceClass(true)
+                            .setResourceJavaPackage("example"))
+                    .setJavaInfo(JavaIdeInfo.builder())
+                    .addSource(source("java/example/Source.java"))
+                    .addDependency("//third_party/lib:res_lib")
+                    .build())
+            .addTarget(
+                TargetIdeInfo.builder()
+                    .setLabel("//third_party/lib:res_lib")
+                    .setBuildFile(source("third_party/lib/BUILD"))
+                    .setKind(AndroidBlazeRules.RuleTypes.ANDROID_LIBRARY.getKind())
+                    .setAndroidInfo(
+                        AndroidIdeInfo.builder()
+                            .addResource(
+                                AndroidResFolder.builder()
+                                    .setRoot(source("third_party/lib/res"))
+                                    .build())
+                            .setGenerateResourceClass(true)
+                            .setResourceJavaPackage("com.example")
+                            .setResourceJar(
+                                LibraryArtifact.builder()
+                                    .setClassJar(gen("third_party/lib/res_lib_resources.jar"))))
+                    .setJavaInfo(
+                        JavaIdeInfo.builder()
+                            .addJar(
+                                LibraryArtifact.builder()
+                                    .setClassJar(gen("third_party/lib/res_lib_resources.jar"))))
+                    .build());
+    jdepsMap.put(
+        TargetKey.forPlainTarget(Label.create("//java/example:lib")),
+        ImmutableList.of(jdepsPath("third_party/lib/res_lib_resources.jar")));
+    BlazeJavaImportResult javaResult =
+        importJavaWorkspace(workspaceRoot, targetMapBuilder, projectView);
+    BlazeAndroidImportResult androidResult =
+        importWorkspace(workspaceRoot, targetMapBuilder, projectView);
+
+    errorCollector.assertNoIssues();
+
+    // BlazeJavaWorkspace should pick up the resource jar from jDeps file, and
+    assertThat(javaResult.libraries).hasSize(1);
+    assertThat(androidResult.androidResourceModules).hasSize(1);
+    // BlazeAndroidWorkspaceImporter should pick up resource JAR from AndroidIdeInfo.
+    assertThat(androidResult.resourceJars).hasSize(1);
+    // Ensure that the BlazeAndroidWorkspaceImporter picked up the correct JAR
+    assertThat(
+            androidResult.resourceJars.stream()
+                .map(BlazeAndroidWorkspaceImporterTest::libraryJarName)
+                .collect(Collectors.toList()))
+        .containsExactly("res_lib_resources.jar");
+
+    // Check that BlazeAndroidLibrarySource can filter out the resource jar
+    BlazeAndroidLibrarySource.ResourceJarFilter resourceJarFilter =
+        new BlazeAndroidLibrarySource.ResourceJarFilter(androidResult.resourceJars);
+    assertThat(resourceJarFilter.test(javaResult.libraries.values().asList().get(0))).isFalse();
+  }
+
+  @Test
+  public void testResJarFilter_resJarFromSource() {
+    ProjectView projectView =
+        ProjectView.builder()
+            .add(
+                ListSection.builder(DirectorySection.KEY)
+                    .add(DirectoryEntry.include(new WorkspacePath("java/example"))))
+            .build();
+
+    TargetMapBuilder targetMapBuilder =
+        TargetMapBuilder.builder()
+            .addTarget(
+                TargetIdeInfo.builder()
+                    .setLabel("//java/example:lib")
+                    .setBuildFile(source("java/example/BUILD"))
+                    .setKind(AndroidBlazeRules.RuleTypes.ANDROID_LIBRARY.getKind())
+                    .setAndroidInfo(
+                        AndroidIdeInfo.builder()
+                            .setManifestFile(source("java/example/AndroidManifest.xml"))
+                            .addResource(source("java/example/res"))
+                            .setGenerateResourceClass(true)
+                            .setResourceJavaPackage("example"))
+                    .setJavaInfo(JavaIdeInfo.builder())
+                    .addSource(source("java/example/Source.java"))
+                    .addDependency("//third_party/lib:res_lib")
+                    .build())
+            .addTarget(
+                TargetIdeInfo.builder()
+                    .setLabel("//java/example/test_res:res_lib")
+                    .setBuildFile(source("java/example/test_res/BUILD"))
+                    .setKind(AndroidBlazeRules.RuleTypes.ANDROID_LIBRARY.getKind())
+                    .setAndroidInfo(
+                        AndroidIdeInfo.builder()
+                            .addResource(
+                                AndroidResFolder.builder()
+                                    .setRoot(source("java/example/test_res/res"))
+                                    .build())
+                            .setGenerateResourceClass(true)
+                            .setResourceJavaPackage("com.example.test_res")
+                            .setResourceJar(
+                                LibraryArtifact.builder()
+                                    .setClassJar(
+                                        gen("java/example/test_res/res_lib_resources.jar"))))
+                    .setJavaInfo(
+                        JavaIdeInfo.builder()
+                            .addJar(
+                                LibraryArtifact.builder()
+                                    .setClassJar(
+                                        gen("java/example/test_res/res_lib_resources.jar"))))
+                    .build());
+    jdepsMap.put(
+        TargetKey.forPlainTarget(Label.create("//java/example:lib")),
+        ImmutableList.of(jdepsPath("java/example/test_res/res_lib_resources.jar")));
+    BlazeJavaImportResult javaResult =
+        importJavaWorkspace(workspaceRoot, targetMapBuilder, projectView);
+    BlazeAndroidImportResult androidResult =
+        importWorkspace(workspaceRoot, targetMapBuilder, projectView);
+
+    errorCollector.assertNoIssues();
+
+    // BlazeJavaWorkspace should pick up the resource jar from jDeps file, and
+    assertThat(javaResult.libraries).hasSize(1);
+    assertThat(androidResult.androidResourceModules).hasSize(2);
+    // BlazeAndroidWorkspaceImporter should pick up resource JAR from AndroidIdeInfo.
+    assertThat(androidResult.resourceJars).hasSize(1);
+    // Ensure that the BlazeAndroidWorkspaceImporter picked up the correct JAR
+    assertThat(
+            androidResult.resourceJars.stream()
+                .map(BlazeAndroidWorkspaceImporterTest::libraryJarName)
+                .collect(Collectors.toList()))
+        .containsExactly("res_lib_resources.jar");
+
+    // Check that BlazeAndroidLibrarySource can filter out the resource jar
+    BlazeAndroidLibrarySource.ResourceJarFilter resourceJarFilter =
+        new BlazeAndroidLibrarySource.ResourceJarFilter(androidResult.resourceJars);
+    assertThat(resourceJarFilter.test(javaResult.libraries.values().asList().get(0))).isFalse();
   }
 
   /**
