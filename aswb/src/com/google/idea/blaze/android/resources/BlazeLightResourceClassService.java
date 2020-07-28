@@ -19,6 +19,7 @@ import static com.google.common.collect.ImmutableSet.toImmutableSet;
 
 import com.android.tools.idea.projectsystem.LightResourceClassService;
 import com.android.tools.idea.res.AndroidLightPackage;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
@@ -44,7 +45,8 @@ import org.jetbrains.annotations.Nullable;
 /** Implementation of {@link LightResourceClassService} set up at Blaze sync time. */
 public class BlazeLightResourceClassService implements LightResourceClassService {
 
-  private static final FeatureRolloutExperiment workspaceResourcesFeature =
+  @VisibleForTesting
+  public static final FeatureRolloutExperiment workspaceResourcesFeature =
       new FeatureRolloutExperiment("aswb.workspace.light.class.enabled");
 
   // It should be harmless to create stub resource PsiPackages which shadow any "real" PsiPackages.
@@ -167,8 +169,12 @@ public class BlazeLightResourceClassService implements LightResourceClassService
     }
 
     BlazeRClass rClass = workspaceRClasses.get(qualifiedName);
-    if (rClass != null && scope.isSearchInModuleContent(rClass.getModule())) {
-      return null;
+    if (rClass != null) {
+      if (scope.isSearchInModuleContent(rClass.getModule())) {
+        return rClass;
+      } else {
+        return null;
+      }
     }
 
     Module workspaceModule =

@@ -26,6 +26,8 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.idea.blaze.base.async.FutureUtil;
+import com.google.idea.blaze.base.command.buildresult.BlazeArtifact;
 import com.google.idea.blaze.base.command.buildresult.RemoteOutputArtifact;
 import com.google.idea.blaze.base.ideinfo.ArtifactLocation;
 import com.google.idea.blaze.base.ideinfo.TargetIdeInfo;
@@ -33,8 +35,10 @@ import com.google.idea.blaze.base.ideinfo.TargetMap;
 import com.google.idea.blaze.base.model.OutputsProvider;
 import com.google.idea.blaze.base.model.RemoteOutputArtifacts;
 import com.google.idea.blaze.base.prefetch.FetchExecutor;
+import com.google.idea.blaze.base.prefetch.RemoteArtifactPrefetcher;
 import com.google.idea.blaze.base.scope.BlazeContext;
 import com.google.idea.blaze.base.scope.output.IssueOutput;
+import com.google.idea.blaze.base.scope.scopes.TimingScope.EventType;
 import com.google.idea.blaze.base.settings.BlazeImportSettings;
 import com.google.idea.blaze.base.settings.BlazeImportSettingsManager;
 import com.google.idea.blaze.base.sync.data.BlazeDataStorage;
@@ -79,9 +83,11 @@ public final class RemoteOutputsCache {
   private static final Logger logger = Logger.getInstance(RemoteOutputsCache.class);
 
   private final File cacheDir;
+  private final Project project;
   private volatile Map<String, File> cachedFiles = ImmutableMap.of();
 
   private RemoteOutputsCache(Project project) {
+    this.project = project;
     this.cacheDir = getCacheDir(project);
   }
 
@@ -150,7 +156,7 @@ public final class RemoteOutputsCache {
 
       List<File> removed =
           cachedFiles.entrySet().stream()
-              .filter(e -> !updatedOutputs.containsKey(e.getKey()))
+              .filter(e -> !newState.containsKey(e.getKey()))
               .map(Map.Entry::getValue)
               .collect(toImmutableList());
 
@@ -162,6 +168,15 @@ public final class RemoteOutputsCache {
           return;
         }
       }
+      ListenableFuture<?> downloadArtifactsFuture =
+          RemoteArtifactPrefetcher.getInstance()
+              .downloadArtifacts(
+                  /* projectName= */ project.getName(),
+                  /* outputArtifacts= */ BlazeArtifact.getRemoteArtifacts(updatedOutputs.values()));
+      FutureUtil.waitForFuture(context, downloadArtifactsFuture)
+          .timed("PrefetchRemoteOutput", EventType.Prefetching)
+          .withProgressMessage("Prefetching output artifacts...")
+          .run();
 
       List<ListenableFuture<?>> futures = new ArrayList<>(copyLocally(updatedOutputs));
       futures.addAll(deleteCacheFiles(removed));
@@ -223,7 +238,7 @@ public final class RemoteOutputsCache {
             futures.add(
                 FetchExecutor.EXECUTOR.submit(
                     () -> {
-                      Path destination = Paths.get(new File(cacheDir, key).getPath());
+                      Path destination = new File(cacheDir, key).toPath();
                       try (InputStream stream = artifact.getInputStream()) {
                         Files.copy(stream, destination, StandardCopyOption.REPLACE_EXISTING);
                       } catch (IOException e) {

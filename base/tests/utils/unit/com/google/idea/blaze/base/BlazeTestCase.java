@@ -15,8 +15,6 @@
  */
 package com.google.idea.blaze.base;
 
-import com.google.idea.sdkcompat.openapi.ExtensionsCompat;
-import com.google.idea.sdkcompat.testframework.MockComponentManagerCompat;
 import com.intellij.mock.MockComponentManager;
 import com.intellij.mock.MockProject;
 import com.intellij.openapi.Disposable;
@@ -83,7 +81,7 @@ public class BlazeTestCase {
     }
 
     public <T> void register(Class<T> klass, T instance) {
-      MockComponentManagerCompat.registerService(componentManager, klass, instance, testDisposable);
+      componentManager.registerService(klass, instance, testDisposable);
     }
   }
 
@@ -95,7 +93,6 @@ public class BlazeTestCase {
         (MutablePicoContainer) ApplicationManager.getApplication().getPicoContainer();
     MockProject mockProject = TestUtils.mockProject(applicationContainer, testDisposable);
 
-    ExtensionsCompat.cleanRootArea(testDisposable);
     extensionsArea = (ExtensionsAreaImpl) Extensions.getRootArea();
 
     this.project = mockProject;

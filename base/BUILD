@@ -1,5 +1,3 @@
-licenses(["notice"])  # Apache 2.0
-
 load(
     "//build_defs:build_defs.bzl",
     "intellij_plugin",
@@ -11,10 +9,9 @@ load(
     "intellij_integration_test_suite",
     "intellij_unit_test_suite",
 )
-load(
-    "//intellij_platform_sdk:build_defs.bzl",
-    "select_for_plugin_api",
-)
+load("//intellij_platform_sdk:build_defs.bzl", "select_for_plugin_api")
+
+licenses(["notice"])  # Apache 2.0
 
 java_library(
     name = "base",
@@ -41,7 +38,17 @@ java_library(
 
 intellij_plugin_library(
     name = "plugin_library",
-    plugin_xmls = ["src/META-INF/blaze-base.xml"],
+    plugin_xmls = ["src/META-INF/blaze-base.xml"] + select_for_plugin_api({
+        "android-studio-4.0": [],
+        "android-studio-4.1": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
+        "android-studio-4.2": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
+        "intellij-2019.3": [],
+        "intellij-ue-2019.3": [],
+        "intellij-2020.1": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
+        "intellij-ue-2020.1": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
+        "clion-2019.3": [],
+        "clion-2020.1": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
+    }),
     visibility = ["//visibility:public"],
     deps = [":base"],
 )
@@ -249,6 +256,23 @@ java_library(
 )
 
 java_library(
+    name = "remote_file_prefetcher",
+    srcs = [
+        "src/com/google/idea/blaze/base/async/FutureUtil.java",
+        "src/com/google/idea/blaze/base/command/buildresult/RemoteOutputArtifact.java",
+        "src/com/google/idea/blaze/base/prefetch/FetchExecutor.java",
+        "src/com/google/idea/blaze/base/prefetch/RemoteArtifactPrefetcher.java",
+    ],
+    neverlink = 1,
+    deps = [
+        ":base",
+        "//intellij_platform_sdk:jsr305",
+        "//intellij_platform_sdk:plugin_api",
+        "//proto:proto_deps",
+    ],
+)
+
+java_library(
     name = "unit_test_utils",
     testonly = 1,
     srcs = glob(["tests/utils/unit/**/*.java"]),
@@ -315,13 +339,7 @@ intellij_unit_test_suite(
 
 intellij_integration_test_suite(
     name = "integration_tests",
-    srcs = select_for_plugin_api({
-        "android-studio-3.6": glob(
-            ["tests/integrationtests/**/*.java"],
-            exclude = ["tests/integrationtests/com/google/idea/blaze/base/run/BlazeCommandRunConfigurationRunManagerImplTest.java"],
-        ),
-        "default": glob(["tests/integrationtests/**/*.java"]),
-    }),
+    srcs = glob(["tests/integrationtests/**/*.java"]),
     required_plugins = "com.google.idea.blaze.base",
     test_package_root = "com.google.idea.blaze.base",
     runtime_deps = [

@@ -9,11 +9,10 @@ java_library(
     tags = ["no-ide"],
     visibility = ["//visibility:private"],
     exports = select_for_plugin_api({
-        "intellij-ue-2019.2": ["@intellij_ue_2019_2//:javascript"],
         "intellij-ue-2019.3": ["@intellij_ue_2019_3//:javascript"],
         "intellij-ue-2020.1": ["@intellij_ue_2020_1//:javascript"],
-        "clion-2019.2": ["@clion_2019_2//:javascript"],
         "clion-2019.3": ["@clion_2019_3//:javascript"],
+        "clion-2020.1": ["@clion_2020_1//:javascript"],
         "default": [],
     }),
 )
@@ -23,11 +22,10 @@ java_library(
     tags = ["no-ide"],
     visibility = ["//visibility:private"],
     exports = select_for_plugin_api({
-        "intellij-ue-2019.2": ["@intellij_ue_2019_2//:css"],
         "intellij-ue-2019.3": ["@intellij_ue_2019_3//:css"],
         "intellij-ue-2020.1": ["@intellij_ue_2020_1//:css"],
-        "clion-2019.2": ["@clion_2019_2//:css"],
         "clion-2019.3": ["@clion_2019_3//:css"],
+        "clion-2020.1": ["@clion_2020_1//:css"],
         "default": [],
     }),
 )
@@ -37,11 +35,10 @@ java_library(
     tags = ["no-ide"],
     visibility = ["//visibility:private"],
     exports = select_for_plugin_api({
-        "intellij-ue-2019.2": ["@intellij_ue_2019_2//:tslint"],
         "intellij-ue-2019.3": ["@intellij_ue_2019_3//:tslint"],
         "intellij-ue-2020.1": ["@intellij_ue_2020_1//:tslint"],
-        "clion-2019.2": ["@clion_2019_2//:tslint"],
         "clion-2019.3": ["@clion_2019_3//:tslint"],
+        "clion-2020.1": ["@clion_2020_1//:tslint"],
         "default": [],
     }),
 )
@@ -51,11 +48,10 @@ java_library(
     tags = ["no-ide"],
     visibility = ["//visibility:private"],
     exports = select_for_plugin_api({
-        "intellij-ue-2019.2": ["@intellij_ue_2019_2//:angular"],
         "intellij-ue-2019.3": ["@intellij_ue_2019_3//:angular"],
         "intellij-ue-2020.1": ["@intellij_ue_2020_1//:angular"],
-        "clion-2019.2": ["@intellij_ue_2019_2//:angular"],
         "clion-2019.3": ["@intellij_ue_2019_3//:angular"],
+        "clion-2020.1": ["@intellij_ue_2020_1//:angular"],
         "default": [],
     }),
 )

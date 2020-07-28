@@ -27,6 +27,7 @@ import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.ui.EditorNotifications;
 import com.intellij.util.xmlb.XmlSerializerUtil;
+import java.util.Objects;
 
 /** Stores blaze view settings. */
 @State(
@@ -58,8 +59,9 @@ public class BlazeUserSettings implements PersistentStateComponent<BlazeUserSett
     }
   }
 
-  private static final String DEFAULT_BLAZE_PATH =
+  private static final String OLD_DEFAULT_BLAZE_PATH =
       SystemInfo.isMac ? "/usr/local/bin/blaze" : "/usr/bin/blaze";
+  private static final String DEFAULT_BLAZE_PATH = "blaze";
   private static final String DEFAULT_BAZEL_PATH = "bazel";
 
   private FocusBehavior showBlazeConsoleOnSync = FocusBehavior.ALWAYS;
@@ -76,6 +78,7 @@ public class BlazeUserSettings implements PersistentStateComponent<BlazeUserSett
   private boolean showAddFileToProjectNotification = true;
   private String blazeBinaryPath = DEFAULT_BLAZE_PATH;
   private String bazelBinaryPath = DEFAULT_BAZEL_PATH;
+  private boolean migratedBlazeDefaultPath = false;
 
   public static BlazeUserSettings getInstance() {
     return ServiceManager.getService(BlazeUserSettings.class);
@@ -89,6 +92,14 @@ public class BlazeUserSettings implements PersistentStateComponent<BlazeUserSett
   @Override
   public void loadState(BlazeUserSettings state) {
     XmlSerializerUtil.copyBean(state, this);
+
+    // temporary migration code for macs
+    if (SystemInfo.isMac
+        && !migratedBlazeDefaultPath
+        && Objects.equals(blazeBinaryPath, OLD_DEFAULT_BLAZE_PATH)) {
+      blazeBinaryPath = DEFAULT_BLAZE_PATH;
+      migratedBlazeDefaultPath = true;
+    }
   }
 
   /**
@@ -193,8 +204,14 @@ public class BlazeUserSettings implements PersistentStateComponent<BlazeUserSett
     this.blazeBinaryPath = StringUtil.defaultIfEmpty(blazeBinaryPath, DEFAULT_BLAZE_PATH).trim();
   }
 
+  /** Resets the blaze binary path to its default value. */
+  public void clearBlazeBinaryPath() {
+    blazeBinaryPath = DEFAULT_BLAZE_PATH;
+  }
+
   public boolean isDefaultBlazePath() {
-    return DEFAULT_BLAZE_PATH.equals(getBlazeBinaryPath());
+    return DEFAULT_BLAZE_PATH.equals(getBlazeBinaryPath())
+        || OLD_DEFAULT_BLAZE_PATH.equals(getBlazeBinaryPath());
   }
 
   public String getBazelBinaryPath() {
@@ -260,6 +277,7 @@ public class BlazeUserSettings implements PersistentStateComponent<BlazeUserSett
           Boolean.toString(settings.showAddFileToProjectNotification));
       builder.put("blazeBinaryPath", settings.blazeBinaryPath);
       builder.put("bazelBinaryPath", settings.bazelBinaryPath);
+      builder.put("migratedBlazeDefaultPath", Boolean.toString(settings.migratedBlazeDefaultPath));
       return builder.build();
     }
   }

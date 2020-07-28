@@ -127,6 +127,7 @@ public class BlazeJavaSyncPlugin implements BlazeSyncPlugin {
 
     JdepsMap jdepsMap =
         jdepsFileReader.loadJdepsFiles(
+            project,
             context,
             artifactLocationDecoder,
             sourceFilter.getSourceTargets(),
@@ -146,7 +147,8 @@ public class BlazeJavaSyncPlugin implements BlazeSyncPlugin {
             sourceFilter,
             jdepsMap,
             javaWorkingSet,
-            artifactLocationDecoder);
+            artifactLocationDecoder,
+            previousSyncState);
     BlazeJavaImportResult importResult =
         Scope.push(
             context,

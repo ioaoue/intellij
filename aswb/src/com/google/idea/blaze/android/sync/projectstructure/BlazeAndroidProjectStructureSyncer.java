@@ -20,9 +20,11 @@ import static java.util.stream.Collectors.toSet;
 import com.android.annotations.VisibleForTesting;
 import com.android.builder.model.SourceProvider;
 import com.android.ide.common.gradle.model.SourceProviderUtil;
+import com.android.ide.common.util.PathString;
 import com.android.ide.common.util.PathStringUtil;
 import com.android.projectmodel.AndroidPathType;
 import com.android.projectmodel.SourceSet;
+import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -46,6 +48,7 @@ import com.google.idea.blaze.base.ideinfo.AndroidIdeInfo;
 import com.google.idea.blaze.base.ideinfo.ArtifactLocation;
 import com.google.idea.blaze.base.ideinfo.TargetIdeInfo;
 import com.google.idea.blaze.base.ideinfo.TargetKey;
+import com.google.idea.blaze.base.logging.EventLoggingService;
 import com.google.idea.blaze.base.model.BlazeProjectData;
 import com.google.idea.blaze.base.model.primitives.Label;
 import com.google.idea.blaze.base.model.primitives.TargetExpression;
@@ -57,11 +60,13 @@ import com.google.idea.blaze.base.scope.BlazeContext;
 import com.google.idea.blaze.base.scope.output.PrintOutput;
 import com.google.idea.blaze.base.settings.BlazeImportSettingsManager;
 import com.google.idea.blaze.base.sync.BlazeSyncPlugin;
+import com.google.idea.blaze.base.sync.data.BlazeDataStorage;
 import com.google.idea.blaze.base.sync.data.BlazeProjectDataManager;
 import com.google.idea.blaze.base.sync.projectstructure.ModuleEditorProvider;
 import com.google.idea.blaze.base.sync.projectstructure.ModuleFinder;
 import com.google.idea.blaze.base.sync.workspace.ArtifactLocationDecoder;
 import com.google.idea.blaze.java.AndroidBlazeRules;
+import com.google.idea.common.experiments.FeatureRolloutExperiment;
 import com.intellij.execution.RunManager;
 import com.intellij.execution.configurations.RunConfiguration;
 import com.intellij.openapi.application.ApplicationManager;
@@ -72,12 +77,13 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.roots.ModifiableRootModel;
 import com.intellij.openapi.roots.ModuleOrderEntry;
 import com.intellij.openapi.roots.impl.libraries.ProjectLibraryTable;
+import com.intellij.openapi.roots.libraries.Library;
 import com.intellij.openapi.roots.libraries.LibraryTable;
 import java.io.File;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -87,6 +93,35 @@ import org.jetbrains.android.facet.AndroidFacet;
 /** Updates the IDE's project structure. */
 public class BlazeAndroidProjectStructureSyncer {
   private static final Logger log = Logger.getInstance(BlazeAndroidProjectStructureSyncer.class);
+
+  /**
+   * True if run configuration should use the workspace module instead of per-run-configuration
+   * modules.
+   */
+  @VisibleForTesting
+  public static final FeatureRolloutExperiment deprecateRunConfigModuleExperiment =
+      new FeatureRolloutExperiment("blaze.deprecate.run.config.modules");
+
+  private static class ManifestParsingStatCollector {
+    private Duration totalDuration = Duration.ZERO;
+    private int fileCount = 0;
+
+    /** Adds duration to total duration counter. Also increments file count. */
+    void addDuration(Duration duration) {
+      totalDuration = totalDuration.plus(duration);
+      fileCount++;
+    }
+
+    /** Logs the total number of files processed and the amount of time it took. */
+    void submitLogEvent() {
+      EventLoggingService.getInstance()
+          .logEvent(
+              BlazeAndroidProjectStructureSyncer.class,
+              "PostSyncManifestParsing",
+              ImmutableMap.of(
+                  "fileCount", "" + fileCount, "totalDurationMs", "" + totalDuration.toMillis()));
+    }
+  }
 
   public static void updateProjectStructure(
       Project project,
@@ -171,7 +206,17 @@ public class BlazeAndroidProjectStructureSyncer {
       ++totalOrderEntries;
 
       for (String libraryName : androidResourceModule.resourceLibraryKeys) {
-        modifiableRootModel.addLibraryEntry(libraryTable.getLibraryByName(libraryName));
+        Library lib = libraryTable.getLibraryByName(libraryName);
+        if (lib == null) {
+          String message =
+              String.format(
+                  "Could not find library '%s' for module '%s'. Re-syncing might fix this issue.",
+                  libraryName, moduleName);
+          log.warn(message);
+          context.output(PrintOutput.log(message));
+        } else {
+          modifiableRootModel.addLibraryEntry(lib);
+        }
       }
       // Add a dependency from the workspace to the resource module
       ModuleOrderEntry orderEntry = workspaceModifiableModel.addModuleOrderEntry(module);
@@ -179,14 +224,20 @@ public class BlazeAndroidProjectStructureSyncer {
       orderEntry.setExported(true);
     }
 
-    List<TargetIdeInfo> runConfigurationTargets =
-        getRunConfigurationTargets(
-            project, projectViewSet, blazeProjectData, targetToAndroidResourceModule.keySet());
-    for (TargetIdeInfo target : runConfigurationTargets) {
-      TargetKey targetKey = target.getKey();
-      String moduleName = moduleNameForAndroidModule(targetKey);
-      Module module = moduleEditor.createModule(moduleName, StdModuleTypes.JAVA);
-      AndroidFacetModuleCustomizer.createAndroidFacet(module, true);
+    String runConfigurationModuleCount;
+    if (deprecateRunConfigModuleExperiment.isEnabled()) {
+      runConfigurationModuleCount = "skipped";
+    } else {
+      List<TargetIdeInfo> runConfigurationTargets =
+          getRunConfigurationTargets(
+              project, projectViewSet, blazeProjectData, targetToAndroidResourceModule.keySet());
+      for (TargetIdeInfo target : runConfigurationTargets) {
+        TargetKey targetKey = target.getKey();
+        String moduleName = moduleNameForAndroidModule(targetKey);
+        Module module = moduleEditor.createModule(moduleName, StdModuleTypes.JAVA);
+        AndroidFacetModuleCustomizer.createAndroidFacet(module, true);
+      }
+      runConfigurationModuleCount = "" + runConfigurationTargets.size();
     }
 
     int whitelistedGenResources =
@@ -194,10 +245,10 @@ public class BlazeAndroidProjectStructureSyncer {
     context.output(
         PrintOutput.log(
             String.format(
-                "Android resource module count: %d, run config modules: %d, order entries: %d, "
+                "Android resource module count: %d, run config modules: %s, order entries: %d, "
                     + "generated resources: %d",
                 syncData.importResult.androidResourceModules.size(),
-                runConfigurationTargets.size(),
+                runConfigurationModuleCount,
                 totalOrderEntries,
                 whitelistedGenResources)));
   }
@@ -255,6 +306,10 @@ public class BlazeAndroidProjectStructureSyncer {
   /** Ensures a suitable module exists for the given android target. */
   @Nullable
   public static Module ensureRunConfigurationModule(Project project, Label label) {
+    if (deprecateRunConfigModuleExperiment.isEnabled()) {
+      return ModuleFinder.getInstance(project)
+          .findModuleByName(BlazeDataStorage.WORKSPACE_MODULE_NAME);
+    }
     TargetKey targetKey = TargetKey.forPlainTarget(label);
     String moduleName = moduleNameForAndroidModule(targetKey);
     Module module = ModuleFinder.getInstance(project).findModuleByName(moduleName);
@@ -310,7 +365,8 @@ public class BlazeAndroidProjectStructureSyncer {
             moduleDirectory),
         target.getAndroidIdeInfo().getResourceJavaPackage(),
         ImmutableList.of(),
-        false);
+        false,
+        null);
     return newModule;
   }
 
@@ -365,7 +421,7 @@ public class BlazeAndroidProjectStructureSyncer {
     if (androidSdkPlatform == null) {
       return;
     }
-
+    ManifestParsingStatCollector manifestParsingStatCollector = new ManifestParsingStatCollector();
     boolean configAndroidJava8Libs = hasConfigAndroidJava8Libs(projectViewSet);
 
     updateWorkspaceModuleFacetInMemoryState(
@@ -374,7 +430,8 @@ public class BlazeAndroidProjectStructureSyncer {
         workspaceRoot,
         workspaceModule,
         androidSdkPlatform,
-        configAndroidJava8Libs);
+        configAndroidJava8Libs,
+        manifestParsingStatCollector);
 
     ArtifactLocationDecoder artifactLocationDecoder = blazeProjectData.getArtifactLocationDecoder();
     ModuleFinder moduleFinder = ModuleFinder.getInstance(project);
@@ -419,13 +476,19 @@ public class BlazeAndroidProjectStructureSyncer {
               moduleDirectoryForAndroidTarget(workspaceRoot, target)),
           androidIdeInfo.getResourceJavaPackage(),
           resources,
-          configAndroidJava8Libs);
+          configAndroidJava8Libs,
+          manifestParsingStatCollector);
       String modulePackage = androidIdeInfo.getResourceJavaPackage();
       rClassBuilder.addRClass(modulePackage, module);
       sourcePackages.remove(modulePackage);
     }
 
     rClassBuilder.addWorkspacePackages(sourcePackages);
+
+    if (deprecateRunConfigModuleExperiment.isEnabled()) {
+      manifestParsingStatCollector.submitLogEvent();
+      return;
+    }
 
     Set<TargetKey> androidResourceModules =
         syncData.importResult.androidResourceModules.stream()
@@ -456,8 +519,10 @@ public class BlazeAndroidProjectStructureSyncer {
               moduleDirectoryForAndroidTarget(workspaceRoot, target)),
           androidIdeInfo.getResourceJavaPackage(),
           ImmutableList.of(),
-          configAndroidJava8Libs);
+          configAndroidJava8Libs,
+          manifestParsingStatCollector);
     }
+    manifestParsingStatCollector.submitLogEvent();
   }
 
   @VisibleForTesting
@@ -490,9 +555,9 @@ public class BlazeAndroidProjectStructureSyncer {
       WorkspaceRoot workspaceRoot,
       Module workspaceModule,
       AndroidSdkPlatform androidSdkPlatform,
-      boolean configAndroidJava8Libs) {
+      boolean configAndroidJava8Libs,
+      @Nullable ManifestParsingStatCollector manifestParsingStatCollector) {
     File moduleDirectory = workspaceRoot.directory();
-    File manifest = new File(workspaceRoot.directory(), "AndroidManifest.xml");
     String resourceJavaPackage = ":workspace";
     updateModuleFacetInMemoryState(
         project,
@@ -500,10 +565,11 @@ public class BlazeAndroidProjectStructureSyncer {
         androidSdkPlatform,
         workspaceModule,
         moduleDirectory,
-        manifest,
+        null,
         resourceJavaPackage,
         ImmutableList.of(),
-        configAndroidJava8Libs);
+        configAndroidJava8Libs,
+        manifestParsingStatCollector);
   }
 
   private static void updateModuleFacetInMemoryState(
@@ -512,33 +578,28 @@ public class BlazeAndroidProjectStructureSyncer {
       AndroidSdkPlatform androidSdkPlatform,
       Module module,
       File moduleDirectory,
-      File manifestFile,
+      @Nullable File manifestFile,
       String resourceJavaPackage,
       Collection<File> resources,
-      boolean configAndroidJava8Libs) {
+      boolean configAndroidJava8Libs,
+      @Nullable ManifestParsingStatCollector manifestParsingStatCollector) {
+    List<PathString> manifests =
+        manifestFile == null
+            ? ImmutableList.of()
+            : ImmutableList.of(PathStringUtil.toPathString(manifestFile));
     SourceSet sourceSet =
         new SourceSet(
             ImmutableMap.of(
                 AndroidPathType.RES,
                 PathStringUtil.toPathStrings(resources),
                 AndroidPathType.MANIFEST,
-                Collections.singletonList(PathStringUtil.toPathString(manifestFile))));
+                manifests));
     SourceProvider sourceProvider =
         SourceProviderUtil.toSourceProvider(sourceSet, module.getName());
 
-    String applicationId = resourceJavaPackage;
-    try {
-      ManifestParser.ParsedManifest parsedManifest =
-          ParsedManifestService.getInstance(project).getParsedManifest(manifestFile);
-      if (parsedManifest != null && parsedManifest.packageName != null) {
-        applicationId = parsedManifest.packageName;
-      }
-    } catch (IOException e) {
-      log.warn("Could not read from manifest file: " + manifestFile);
-      if (context != null) {
-        context.output(PrintOutput.log("Could not read from manifest file: " + manifestFile));
-      }
-    }
+    String applicationId =
+        getApplicationIdFromManifestOrDefault(
+            project, context, manifestFile, resourceJavaPackage, manifestParsingStatCollector);
 
     BlazeAndroidModel androidModel =
         new BlazeAndroidModel(
@@ -553,5 +614,47 @@ public class BlazeAndroidProjectStructureSyncer {
       BlazeAndroidProjectStructureSyncerCompat.updateAndroidFacetWithSourceAndModel(
           facet, sourceProvider, androidModel);
     }
+  }
+
+  /**
+   * Parses the provided manifest to calculate applicationId. Returns the provided default if the
+   * manifest file does not exist, or is invalid
+   */
+  private static String getApplicationIdFromManifestOrDefault(
+      Project project,
+      @Nullable BlazeContext context,
+      @Nullable File manifestFile,
+      String defaultId,
+      @Nullable ManifestParsingStatCollector manifestParsingStatCollector) {
+    if (manifestFile == null) {
+      return defaultId;
+    }
+
+    String applicationId = defaultId;
+    try {
+      Stopwatch timer = Stopwatch.createStarted();
+      ManifestParser.ParsedManifest parsedManifest =
+          ParsedManifestService.getInstance(project).getParsedManifest(manifestFile);
+      if (manifestParsingStatCollector != null) {
+        manifestParsingStatCollector.addDuration(timer.elapsed());
+      }
+
+      if (parsedManifest != null && parsedManifest.packageName != null) {
+        applicationId = parsedManifest.packageName;
+      } else {
+        String message = "Could not parse manifest file: " + manifestFile;
+        log.warn(message);
+        if (context != null) {
+          context.output(PrintOutput.log(message));
+        }
+      }
+    } catch (IOException e) {
+      String message = "Exception while reading manifest file: " + manifestFile;
+      log.warn(message, e);
+      if (context != null) {
+        context.output(PrintOutput.log(message));
+      }
+    }
+    return applicationId;
   }
 }

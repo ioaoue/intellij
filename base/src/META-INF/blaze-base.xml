@@ -91,7 +91,7 @@
     <action id="Blaze.ExportRunConfigurations"
       class="com.google.idea.blaze.base.run.exporter.ExportRunConfigurationAction"
       text="Export Run Configurations"
-      icon="AllIcons.Actions.Export">
+      icon="AllIcons.ToolbarDecorator.Export">
     </action>
     <action id="Blaze.FileGitHubIssueAction"
         class="com.google.idea.blaze.base.actions.FileGitHubIssueAction"
@@ -222,6 +222,8 @@
     <applicationService serviceImplementation="com.google.idea.blaze.base.sync.projectview.RelatedWorkspacePathFinder"/>
     <applicationService serviceInterface="com.google.idea.blaze.base.prefetch.PrefetchService"
                         serviceImplementation="com.google.idea.blaze.base.prefetch.PrefetchServiceImpl"/>
+    <applicationService serviceInterface="com.google.idea.blaze.base.prefetch.RemoteArtifactPrefetcher"
+                    serviceImplementation="com.google.idea.blaze.base.prefetch.DefaultPrefetcher"/>
     <applicationService serviceImplementation="com.google.idea.blaze.base.wizard2.BlazeWizardUserSettingsStorage"/>
     <applicationService serviceInterface="com.google.idea.blaze.base.wizard2.BlazeWizardOptionProvider"
                         serviceImplementation="com.google.idea.blaze.base.wizard2.BazelWizardOptionProvider"/>
@@ -367,6 +369,8 @@
                     interface="com.google.idea.blaze.base.sync.sharding.BuildBatchingService"/>
     <extensionPoint qualifiedName="com.google.idea.blaze.BlazeHighlightStatsCollector"
                     interface="com.google.idea.blaze.base.editor.BlazeHighlightStatsCollector"/>
+    <extensionPoint qualifiedName="com.google.idea.blaze.AbsolutePathPatcher"
+                    interface="com.google.idea.blaze.base.util.AbsolutePathPatcher"/>
   </extensionPoints>
 
   <application-components>
@@ -414,6 +418,7 @@
     <extensionPoint qualifiedName="com.google.idea.blaze.SettingsUiContributor" interface="com.google.idea.blaze.base.settings.ui.BlazeUserSettingsCompositeConfigurable$UiContributor"/>
     <extensionPoint qualifiedName="com.google.idea.blaze.BlazePsiDirectoryRootNodeNameModifier" interface="com.google.idea.blaze.base.treeview.BlazePsiDirectoryRootNodeNameModifier"/>
     <extensionPoint qualifiedName="com.google.idea.blaze.FileCache" interface="com.google.idea.blaze.base.filecache.FileCache"/>
+    <extensionPoint qualifiedName="com.google.idea.blaze.ArtifactStateHelper" interface="com.google.idea.blaze.base.filecache.ArtifactStateProtoConverter"/>
     <extensionPoint qualifiedName="com.google.idea.blaze.TestTargetHeuristic" interface="com.google.idea.blaze.base.run.TestTargetHeuristic"/>
     <extensionPoint qualifiedName="com.google.idea.blaze.ProjectDataDirectoryValidator" interface="com.google.idea.blaze.base.wizard2.ProjectDataDirectoryValidator"/>
     <extensionPoint qualifiedName="com.google.idea.blaze.AspectStrategyProvider" interface="com.google.idea.blaze.base.sync.aspects.strategy.AspectStrategyProvider"/>
@@ -512,6 +517,8 @@
     <VcsSyncListener implementation="com.google.idea.blaze.base.sync.libraries.ExternalLibraryManager$VcsListener"/>
     <SettingsUiContributor implementation="com.google.idea.blaze.base.settings.ui.BlazeUserSettingsConfigurable$UiContributor" order="first" id="base"/>
     <MacroTargetProvider implementation="com.google.idea.blaze.base.query.BlazeQueryMacroTargetProvider" order="last"/>
+    <ArtifactStateHelper implementation="com.google.idea.blaze.google3.objfs.RemoteOutputStateProtoConverter"/>
+    <BinaryPathRemapper implementation="com.google.idea.blaze.base.async.process.MacBinaryPathRemapper" order="last"/>
   </extensions>
 
 </idea-plugin>

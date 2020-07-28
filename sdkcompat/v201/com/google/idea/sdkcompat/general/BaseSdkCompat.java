@@ -7,6 +7,7 @@ import com.intellij.dvcs.branch.DvcsBranchSettings;
 import com.intellij.find.findUsages.CustomUsageSearcher;
 import com.intellij.find.findUsages.FindUsagesOptions;
 import com.intellij.icons.AllIcons;
+import com.intellij.ide.impl.OpenProjectTask;
 import com.intellij.ide.projectView.TreeStructureProvider;
 import com.intellij.ide.projectView.ViewSettings;
 import com.intellij.ide.scratch.ScratchesNamedScope;
@@ -21,11 +22,14 @@ import com.intellij.openapi.projectRoots.impl.ProjectJdkImpl;
 import com.intellij.openapi.projectRoots.impl.SdkConfigurationUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.ToolWindowManager;
+import com.intellij.platform.PlatformProjectOpenProcessor;
 import com.intellij.psi.PsiElement;
 import com.intellij.ui.EditorNotifications;
 import com.intellij.ui.EditorNotificationsImpl;
+import com.intellij.ui.EditorTextField;
 import com.intellij.usages.Usage;
 import com.intellij.util.Processor;
+import java.nio.file.Path;
 import java.util.Collection;
 import javax.annotation.Nullable;
 import javax.swing.Icon;
@@ -35,8 +39,8 @@ public final class BaseSdkCompat {
   private BaseSdkCompat() {}
 
   /** #api193: made public in 2020.1. */
-  @SuppressWarnings("rawtypes")
-  public static ProjectExtensionPointName<EditorNotifications.Provider> getEditorNotificationsEp() {
+  public static ProjectExtensionPointName<EditorNotifications.Provider<?>>
+      getEditorNotificationsEp() {
     return EditorNotificationsImpl.EP_PROJECT;
   }
 
@@ -108,6 +112,12 @@ public final class BaseSdkCompat {
 
     /** #api193: changed in 2020.1. */
     public static final Icon collapseAll = AllIcons.Actions.Collapseall;
+
+    /** #api193: this is unavailable (and not used) in 2020.1 */
+    public static final Icon disabledRun = AllIcons.Process.Stop;
+
+    /** #api193: this is unavailable (and not used) in 2020.1 */
+    public static final Icon disabledDebug = AllIcons.Process.Stop;
   }
 
   /** #api193: SdkConfigurationUtil changed in 2020.1. */
@@ -120,4 +130,13 @@ public final class BaseSdkCompat {
     return SdkConfigurationUtil.createSdk(
         allSdks, homeDir, sdkType, additionalData, customSdkSuggestedName);
   }
+
+  /** #api193: project opening requirements changed in 2020.1. */
+  public static void openProject(Project project, Path projectFile) {
+    PlatformProjectOpenProcessor.openExistingProject(
+        /* file= */ projectFile, /* projectDir= */ projectFile, new OpenProjectTask(project));
+  }
+
+  /** #api193: auto-disposed with UI component in 2020.1+ */
+  public static void disposeEditorTextField(EditorTextField field) {}
 }
