@@ -1,35 +1,27 @@
 workspace(name = "intellij_with_bazel")
 
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:jvm.bzl", "jvm_maven_import_external")
 
 # Long-lived download links available at: https://www.jetbrains.com/intellij-repository/releases
-
-# The plugin api for IntelliJ 2019.3. This is required to build IJwB,
-# and run integration tests.
-http_archive(
-    name = "intellij_ce_2019_3",
-    build_file = "@//intellij_platform_sdk:BUILD.idea193",
-    sha256 = "1ddd7a389a9d712b4a433b83913c9eaa7e2904e587f9b0307cd398dd764c9ea8",
-    url = "https://www.jetbrains.com/intellij-repository/releases/com/jetbrains/intellij/idea/ideaIC/2019.3.5/ideaIC-2019.3.5.zip",
-)
 
 # The plugin api for IntelliJ 2020.1. This is required to build IJwB,
 # and run integration tests.
 http_archive(
     name = "intellij_ce_2020_1",
     build_file = "@//intellij_platform_sdk:BUILD.idea201",
-    sha256 = "45b5911850fe8e75fab652e8d8a211d548786eb094ac40d96091d340c3c437f9",
-    url = "https://www.jetbrains.com/intellij-repository/releases/com/jetbrains/intellij/idea/ideaIC/2020.1.2/ideaIC-2020.1.2.zip",
+    sha256 = "fd90c5af5cfa248dce54b025df78ec4f0b5f49dd048a4d67493bc00868837de4",
+    url = "https://www.jetbrains.com/intellij-repository/releases/com/jetbrains/intellij/idea/ideaIC/2020.1.4/ideaIC-2020.1.4.zip",
 )
 
-# The plugin api for IntelliJ UE 2019.3. This is required to run UE-specific
-# integration tests.
+# The plugin api for IntelliJ 2020.1. This is required to build IJwB,
+# and run integration tests.
 http_archive(
-    name = "intellij_ue_2019_3",
-    build_file = "@//intellij_platform_sdk:BUILD.ue193",
-    sha256 = "4986d2bb8a8487d54e0932e1eb60f9418139bf9ccec27c820cd951ac2306fc34",
-    url = "https://www.jetbrains.com/intellij-repository/releases/com/jetbrains/intellij/idea/ideaIU/2019.3.5/ideaIU-2019.3.5.zip",
+    name = "intellij_ce_2020_2",
+    build_file = "@//intellij_platform_sdk:BUILD.idea202",
+    sha256 = "4fbaa21efdfbfcf75074d8e70509cb94dbc1c3181e921f0920582ce5fa469908",
+    url = "https://www.jetbrains.com/intellij-repository/releases/com/jetbrains/intellij/idea/ideaIC/2020.2.2/ideaIC-2020.2.2.zip",
 )
 
 # The plugin api for IntelliJ UE 2020.1. This is required to run UE-specific
@@ -37,8 +29,17 @@ http_archive(
 http_archive(
     name = "intellij_ue_2020_1",
     build_file = "@//intellij_platform_sdk:BUILD.ue201",
-    sha256 = "ba02e8dc63114062fa4f648e65adf9318f6c0248274bac1ad757aa44eccbd5e4",
-    url = "https://www.jetbrains.com/intellij-repository/releases/com/jetbrains/intellij/idea/ideaIU/2020.1.2/ideaIU-2020.1.2.zip",
+    sha256 = "2500339706e2951ae63a3c6e82e31a1da26adeee41a79724079420c2f29e18bb",
+    url = "https://www.jetbrains.com/intellij-repository/releases/com/jetbrains/intellij/idea/ideaIU/2020.1.4/ideaIU-2020.1.4.zip",
+)
+
+# The plugin api for IntelliJ UE 2020.1. This is required to run UE-specific
+# integration tests.
+http_archive(
+    name = "intellij_ue_2020_2",
+    build_file = "@//intellij_platform_sdk:BUILD.ue202",
+    sha256 = "434adfaa3e98e7eac8ab3d292086958c9f453b6ab2390e8d5c0a53e945e3f857",
+    url = "https://www.jetbrains.com/intellij-repository/releases/com/jetbrains/intellij/idea/ideaIU/2020.2.2/ideaIU-2020.2.2.zip",
 )
 
 # The plugin api for CLion 2019.3. This is required to build CLwB,
@@ -55,8 +56,8 @@ http_archive(
 http_archive(
     name = "clion_2020_1",
     build_file = "@//intellij_platform_sdk:BUILD.clion201",
-    sha256 = "c7d52c5059883c71d3db1271e82f513d0a3d1054efb69cd7d1f3e99ac1b2ab60",
-    url = "https://download.jetbrains.com/cpp/CLion-2020.1.2.tar.gz",
+    sha256 = "a95c27cf367f7b698b4bb1f5649f8399c29f4031bcf6b133336d0d75169f4b97",
+    url = "https://download.jetbrains.com/cpp/CLion-2020.1.3.tar.gz",
 )
 
 # Python plugin for IntelliJ CE. Required at compile-time for python-specific features.
@@ -87,18 +88,18 @@ http_archive(
     url = "https://plugins.jetbrains.com/files/7322/88054/python-ce-201.7846.93.zip",
 )
 
-# Go plugin for IntelliJ UE. Required at compile-time for Bazel integration.
+# Python plugin for IntelliJ CE. Required at compile-time for python-specific features.
 http_archive(
-    name = "go_2019_3",
+    name = "python_2020_2",
     build_file_content = "\n".join([
         "java_import(",
-        "    name = 'go',",
-        "    jars = glob(['intellij-go/lib/*.jar']),",
+        "    name = 'python',",
+        "    jars = ['python-ce/lib/python-ce.jar'],",
         "    visibility = ['//visibility:public'],",
         ")",
     ]),
-    sha256 = "cf6a6116d49ee0a57c0fa5601d943b71c1965f2fc3e171b34fbc39816bc70c50",
-    url = "https://plugins.jetbrains.com/files/9568/79857/intellij-go-193.6494.35.125.zip",
+    sha256 = "fa9524db2f5b6e42be559ffdab73a963ca06ca057e27a290f5665d38e581764a",
+    url = "https://plugins.jetbrains.com/files/7322/97141/python-ce-202.7319.64.zip",
 )
 
 # Go plugin for IntelliJ UE. Required at compile-time for Bazel integration.
@@ -115,18 +116,18 @@ http_archive(
     url = "https://plugins.jetbrains.com/files/9568/87978/intellij-go-201.7846.76.189.zip",
 )
 
-# Scala plugin for IntelliJ CE. Required at compile-time for scala-specific features.
+# Go plugin for IntelliJ UE. Required at compile-time for Bazel integration.
 http_archive(
-    name = "scala_2019_3",
+    name = "go_2020_2",
     build_file_content = "\n".join([
         "java_import(",
-        "    name = 'scala',",
-        "    jars = glob(['Scala/lib/*.jar']),",
+        "    name = 'go',",
+        "    jars = glob(['intellij-go/lib/*.jar']),",
         "    visibility = ['//visibility:public'],",
         ")",
     ]),
-    sha256 = "94779905396c2d3a2d5693aece5f4845e5675e7a6e0102313e88d1afd5b16ffb",
-    url = "https://plugins.jetbrains.com/files/1347/75234/scala-intellij-bin-2019.3.23.zip",
+    sha256 = "c020553701939692d165d3607dd94532f97c48d81435f1cb6d927a6723888327",
+    url = "https://plugins.jetbrains.com/files/9568/97011/go-202.7319.50.zip",
 )
 
 # Scala plugin for IntelliJ CE. Required at compile-time for scala-specific features.
@@ -143,13 +144,18 @@ http_archive(
     url = "https://plugins.jetbrains.com/files/1347/76628/scala-intellij-bin-2020.1.7.zip",
 )
 
-# The plugin api for Android Studio 4.0. This is required to build ASwB,
-# and run integration tests.
+# Scala plugin for IntelliJ CE. Required at compile-time for scala-specific features.
 http_archive(
-    name = "android_studio_4_0",
-    build_file = "@//intellij_platform_sdk:BUILD.android_studio40",
-    sha256 = "70c04dc542281c015a700fad73d7d62ce9dace774bc12050cad9f1d6363112eb",
-    url = "https://dl.google.com/dl/android/studio/ide-zips/4.0.0.16/android-studio-ide-193.6514223-linux.tar.gz",
+    name = "scala_2020_2",
+    build_file_content = "\n".join([
+        "java_import(",
+        "    name = 'scala',",
+        "    jars = glob(['Scala/lib/*.jar']),",
+        "    visibility = ['//visibility:public'],",
+        ")",
+    ]),
+    sha256 = "52004387981df909afaeabb91b032aee51d1860acf7b434d111f261a9e1ed07d",
+    url = "https://plugins.jetbrains.com/files/1347/97067/scala-intellij-bin-2020.2.27.zip",
 )
 
 # The plugin api for Android Studio 4.1. This is required to build ASwB,
@@ -157,8 +163,8 @@ http_archive(
 http_archive(
     name = "android_studio_4_1",
     build_file = "@//intellij_platform_sdk:BUILD.android_studio41",
-    sha256 = "22a679c297b8e0e33182c90ff5962a051e6b6ac9eecadf7b5ab1f987634d44ae",
-    url = "https://dl.google.com/dl/android/studio/ide-zips/4.1.0.13/android-studio-ide-201.6636797-linux.tar.gz",
+    sha256 = "4b9521fc4a6313ad65ff3e14b0f3fb50427d464fe14227555565f46e0ffad202",
+    url = "https://dl.google.com/dl/android/studio/ide-zips/4.1.0.19/android-studio-ide-201.6858069-linux.tar.gz",
 )
 
 # The plugin api for Android Studio 4.2. This is required to build ASwB,
@@ -166,8 +172,8 @@ http_archive(
 http_archive(
     name = "android_studio_4_2",
     build_file = "@//intellij_platform_sdk:BUILD.android_studio42",
-    sha256 = "6cf183b068043bd30d762f1f7f95bd4acf787b0e53c80f76fd4af459de4868ec",
-    url = "https://dl.google.com/dl/android/studio/ide-zips/4.2.0.4/android-studio-ide-201.6636798-linux.tar.gz",
+    sha256 = "df9e33c751b9e7227168a2a87a2062c72fec06cd85c6054fc626950f5a363ab1",
+    url = "https://dl.google.com/dl/android/studio/ide-zips/4.2.0.7/android-studio-ide-201.6720134-linux.tar.gz",
 )
 
 # LICENSE: Common Public License 1.0
@@ -257,6 +263,12 @@ jvm_maven_import_external(
     artifact_sha256 = "524b43ea15ca97c68f10d5f417c4068dc88144b620d2203f0910441a769fd42f",
     licenses = ["notice"],  # Apache 2.0
     server_urls = ["https://repo1.maven.org/maven2"],
+)
+
+git_repository(
+    name = "bazel",
+    branch = "master",
+    remote = "https://github.com/bazelbuild/bazel",
 )
 
 http_archive(

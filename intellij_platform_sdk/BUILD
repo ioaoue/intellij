@@ -75,21 +75,6 @@ config_setting(
 )
 
 config_setting(
-    name = "intellij-2019.3",
-    values = {
-        "define": "ij_product=intellij-2019.3",
-    },
-)
-
-config_setting(
-    name = "intellij-2019.3-mac",
-    values = {
-        "cpu": "darwin_x86_64",
-        "define": "ij_product=intellij-2019.3",
-    },
-)
-
-config_setting(
     name = "intellij-2020.1",
     values = {
         "define": "ij_product=intellij-2020.1",
@@ -105,17 +90,17 @@ config_setting(
 )
 
 config_setting(
-    name = "intellij-ue-2019.3",
+    name = "intellij-2020.2",
     values = {
-        "define": "ij_product=intellij-ue-2019.3",
+        "define": "ij_product=intellij-2020.2",
     },
 )
 
 config_setting(
-    name = "intellij-ue-2019.3-mac",
+    name = "intellij-2020.2-mac",
     values = {
         "cpu": "darwin_x86_64",
-        "define": "ij_product=intellij-ue-2019.3",
+        "define": "ij_product=intellij-2020.2",
     },
 )
 
@@ -131,6 +116,21 @@ config_setting(
     values = {
         "cpu": "darwin_x86_64",
         "define": "ij_product=intellij-ue-2020.1",
+    },
+)
+
+config_setting(
+    name = "intellij-ue-2020.2",
+    values = {
+        "define": "ij_product=intellij-ue-2020.2",
+    },
+)
+
+config_setting(
+    name = "intellij-ue-2020.2-mac",
+    values = {
+        "cpu": "darwin_x86_64",
+        "define": "ij_product=intellij-ue-2020.2",
     },
 )
 
@@ -164,13 +164,6 @@ config_setting(
 )
 
 config_setting(
-    name = "android-studio-4.0",
-    values = {
-        "define": "ij_product=android-studio-4.0",
-    },
-)
-
-config_setting(
     name = "android-studio-4.1",
     values = {
         "define": "ij_product=android-studio-4.1",
@@ -188,7 +181,7 @@ config_setting(
 config_setting(
     name = "android-studio-4.2",
     values = {
-        "define": "ij_product=android-studio-4.1",
+        "define": "ij_product=android-studio-4.2",
     },
 )
 
@@ -344,8 +337,9 @@ java_library(
     exports = select_for_plugin_api({
         "clion-2019.3": ["@jsr305_annotations//jar"],
         "clion-2020.1": ["@jsr305_annotations//jar"],
-        "intellij-ue-2019.3": ["@jsr305_annotations//jar"],
         "intellij-ue-2020.1": ["@jsr305_annotations//jar"],
+        "intellij-ue-2020.2": ["@jsr305_annotations//jar"],
+        "android-studio-4.2": ["@jsr305_annotations//jar"],
         "default": [":plugin_api"],
     }),
 )

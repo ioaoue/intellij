@@ -151,7 +151,10 @@ public class BlazePyRunConfigurationRunner implements BlazeCommandRunConfigurati
             Collections.addAll(modifiedPatchers, patchers);
           }
           modifiedPatchers.add(applyHelperPydevFlags);
-          return super.startProcess(starter, modifiedPatchers.toArray(new CommandLinePatcher[0]));
+          ProcessHandler process =
+              super.startProcess(starter, modifiedPatchers.toArray(new CommandLinePatcher[0]));
+          BlazePyDebugHelper.attachProcessListeners(target, process);
+          return process;
         }
 
         @Override
@@ -180,6 +183,7 @@ public class BlazePyRunConfigurationRunner implements BlazeCommandRunConfigurati
 
     @Nullable
     @Override
+    @SuppressWarnings("rawtypes") // #api193: Use ProgramRunner<?> as super method from 2020.1 on.
     public ExecutionResult execute(Executor executor, ProgramRunner runner)
         throws ExecutionException {
       return null;

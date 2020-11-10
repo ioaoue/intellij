@@ -18,7 +18,6 @@ package com.google.idea.blaze.plugin.run;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -56,7 +55,6 @@ import com.intellij.execution.process.OSProcessHandler;
 import com.intellij.execution.process.ProcessAdapter;
 import com.intellij.execution.process.ProcessEvent;
 import com.intellij.execution.runners.ExecutionEnvironment;
-import com.intellij.openapi.application.JetBrainsProtocolHandler;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.options.ConfigurationException;
 import com.intellij.openapi.options.SettingsEditor;
@@ -92,7 +90,7 @@ import org.jdom.Element;
  * A run configuration that builds a plugin jar via blaze, copies it to the SDK sandbox, then runs
  * IJ with the plugin loaded.
  */
-public class BlazeIntellijPluginConfiguration extends LocatableConfigurationBase
+public class BlazeIntellijPluginConfiguration extends LocatableConfigurationBase<Object>
     implements BlazeRunConfiguration, ModuleRunConfiguration {
 
   private static final String TARGET_TAG = "blaze-target";
@@ -193,7 +191,7 @@ public class BlazeIntellijPluginConfiguration extends LocatableConfigurationBase
     }
     String buildNumber = IdeaJdkHelper.getBuildNumber(ideaJdk);
     final BlazeIntellijPluginDeployer deployer =
-        new BlazeIntellijPluginDeployer(sandboxHome, buildNumber, target);
+        new BlazeIntellijPluginDeployer(sandboxHome, target);
     env.putUserData(BlazeIntellijPluginDeployer.USER_DATA_KEY, deployer);
 
     // copy license from running instance of idea
@@ -213,10 +211,6 @@ public class BlazeIntellijPluginConfiguration extends LocatableConfigurationBase
 
         IntellijWithPluginClasspathHelper.addRequiredVmParams(
             params, ideaJdk, deployedPluginInfo.javaAgents);
-
-        vm.defineProperty(
-            JetBrainsProtocolHandler.REQUIRED_PLUGINS_KEY,
-            Joiner.on(',').join(deployedPluginInfo.pluginIds));
 
         if (!vm.hasProperty(PlatformUtils.PLATFORM_PREFIX_KEY) && buildNumber != null) {
           String prefix = IdeaJdkHelper.getPlatformPrefix(buildNumber);
@@ -448,6 +442,13 @@ public class BlazeIntellijPluginConfiguration extends LocatableConfigurationBase
       exeFlagsEditor.setComponentEnabled(enabled);
     }
 
+    @Nullable
+    private static Sdk getProjectJdk(@Nullable Sdk possibleClone) {
+      return possibleClone == null
+          ? null
+          : ProjectJdkTable.getInstance().findJdk(possibleClone.getName());
+    }
+
     @VisibleForTesting
     @Override
     public void resetEditorFrom(BlazeIntellijPluginConfiguration s) {
@@ -457,7 +458,7 @@ public class BlazeIntellijPluginConfiguration extends LocatableConfigurationBase
       if (s.pluginSdk != null) {
         sdkCombo.setSelectedJdk(s.pluginSdk);
       } else {
-        s.pluginSdk = sdkCombo.getSelectedJdk();
+        s.pluginSdk = getProjectJdk(sdkCombo.getSelectedJdk());
       }
       if (s.vmParameters != null) {
         vmParameters.getComponent().setText(s.vmParameters);
@@ -481,7 +482,7 @@ public class BlazeIntellijPluginConfiguration extends LocatableConfigurationBase
       }
       blazeFlagsEditor.applyEditorTo(s.blazeFlags);
       exeFlagsEditor.applyEditorTo(s.exeFlags);
-      s.pluginSdk = sdkCombo.getSelectedJdk();
+      s.pluginSdk = getProjectJdk(sdkCombo.getSelectedJdk());
       s.vmParameters = vmParameters.getComponent().getText();
       s.programParameters = programParameters.getComponent().getText();
       s.keepInSync = keepInSyncCheckBox.isVisible() ? keepInSyncCheckBox.isSelected() : null;

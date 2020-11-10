@@ -19,7 +19,7 @@ import com.google.common.base.Functions;
 import com.google.common.collect.ImmutableMap;
 import com.google.devtools.intellij.model.ProjectData;
 import com.google.idea.blaze.base.ideinfo.ProtoWrapper;
-import com.google.protobuf.repackaged.Message;
+import com.google.repackaged.protobuf.Message;
 import com.intellij.openapi.extensions.ExtensionPointName;
 import java.util.Arrays;
 import java.util.Objects;
@@ -29,6 +29,9 @@ import javax.annotation.Nullable;
 public interface SyncData<P extends Message> extends ProtoWrapper<P> {
   void insert(ProjectData.SyncState.Builder builder);
 
+  // SyncData#getClass omits generic types and hence we need to omit the generic type for the map
+  // key.
+  @SuppressWarnings("rawtypes")
   @Nullable
   static ImmutableMap<Class<? extends SyncData>, SyncData<?>> extract(
       ProjectData.SyncState syncState) {

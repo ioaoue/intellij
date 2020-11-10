@@ -16,19 +16,17 @@
 package com.google.idea.blaze.java.sync.importer;
 
 import static com.google.common.truth.Truth.assertThat;
+import static com.google.common.truth.Truth8.assertThat;
 import static org.junit.Assert.assertNotNull;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
 import com.google.idea.blaze.base.BlazeTestCase;
 import com.google.idea.blaze.base.async.executor.BlazeExecutor;
 import com.google.idea.blaze.base.async.executor.MockBlazeExecutor;
 import com.google.idea.blaze.base.bazel.BazelBuildSystemProvider;
 import com.google.idea.blaze.base.bazel.BuildSystemProvider;
-import com.google.idea.blaze.base.command.buildresult.RemoteOutputArtifact;
 import com.google.idea.blaze.base.ideinfo.AndroidIdeInfo;
 import com.google.idea.blaze.base.ideinfo.ArtifactLocation;
 import com.google.idea.blaze.base.ideinfo.JavaIdeInfo;
@@ -67,6 +65,7 @@ import com.google.idea.blaze.base.settings.Blaze;
 import com.google.idea.blaze.base.settings.BlazeImportSettings;
 import com.google.idea.blaze.base.settings.BlazeImportSettingsManager;
 import com.google.idea.blaze.base.settings.BuildSystem;
+import com.google.idea.blaze.base.sync.MockRemoteArtifactPrefetcher;
 import com.google.idea.blaze.base.sync.projectview.WorkspaceLanguageSettings;
 import com.google.idea.blaze.base.sync.workspace.ArtifactLocationDecoder;
 import com.google.idea.blaze.base.sync.workspace.MockArtifactLocationDecoder;
@@ -1527,7 +1526,67 @@ public class BlazeJavaWorkspaceImporterTest extends BlazeTestCase {
   }
 
   @Test
-  public void testSyncAugmenter() {
+  public void testSyncAugmenter_notAttachGenerateJar() {
+    augmenters.registerExtension(
+        new BlazeJavaSyncAugmenter() {
+
+          @Override
+          public void addJarsForSourceTarget(
+              WorkspaceLanguageSettings workspaceLanguageSettings,
+              ProjectViewSet projectViewSet,
+              TargetIdeInfo target,
+              Collection<BlazeJarLibrary> jars,
+              Collection<BlazeJarLibrary> genJars) {
+            if (target.getKey().getLabel().equals(Label.create("//java/example:kotlinlib"))) {
+              jars.add(
+                  new BlazeJarLibrary(
+                      LibraryArtifact.builder().setInterfaceJar(gen("source.jar")).build(),
+                      target.getKey()));
+            }
+          }
+
+          @Override
+          public boolean shouldAttachGenJar(TargetIdeInfo target) {
+            return !target.getKey().getLabel().equals(Label.create("//java/example:kotlinlib"));
+          }
+        });
+
+    ProjectView projectView =
+        ProjectView.builder()
+            .add(
+                ListSection.builder(DirectorySection.KEY)
+                    .add(DirectoryEntry.include(new WorkspacePath("java/example"))))
+            .build();
+
+    TargetMapBuilder targetMapBuilder =
+        TargetMapBuilder.builder()
+            .addTarget(
+                TargetIdeInfo.builder()
+                    .setLabel("//java/example:kotlinlib")
+                    .setBuildFile(source("java/example/BUILD"))
+                    .setKind("java_library")
+                    .addSource(source("Source.java"))
+                    .addDependency("//java/lib:lib")
+                    .setJavaInfo(
+                        JavaIdeInfo.builder()
+                            .addGeneratedJar(
+                                LibraryArtifact.builder().setInterfaceJar(gen("generated.jar")))))
+            .addTarget(
+                TargetIdeInfo.builder()
+                    .setLabel("//java/lib:lib")
+                    .setBuildFile(source("java/lib/BUILD"))
+                    .setKind("java_library")
+                    .addSource(source("Lib.java"))
+                    .setJavaInfo(JavaIdeInfo.builder()));
+
+    BlazeJavaImportResult result = importWorkspace(workspaceRoot, targetMapBuilder, projectView);
+    assertThat(
+            result.libraries.values().stream().map(BlazeJavaWorkspaceImporterTest::libraryFileName))
+        .containsExactly("source.jar");
+  }
+
+  @Test
+  public void testSyncAugmenter_attachGeneratedJar() {
     augmenters.registerExtension(
         (workspaceLanguageSettings, projectViewSet, target, jars, genJars) -> {
           if (target.getKey().getLabel().equals(Label.create("//java/example:source"))) {
@@ -1554,7 +1613,10 @@ public class BlazeJavaWorkspaceImporterTest extends BlazeTestCase {
                     .setKind("java_library")
                     .addSource(source("Source.java"))
                     .addDependency("//java/lib:lib")
-                    .setJavaInfo(JavaIdeInfo.builder()))
+                    .setJavaInfo(
+                        JavaIdeInfo.builder()
+                            .addGeneratedJar(
+                                LibraryArtifact.builder().setInterfaceJar(gen("generated.jar")))))
             .addTarget(
                 TargetIdeInfo.builder()
                     .setLabel("//java/lib:lib")
@@ -1565,13 +1627,10 @@ public class BlazeJavaWorkspaceImporterTest extends BlazeTestCase {
 
     BlazeJavaImportResult result = importWorkspace(workspaceRoot, targetMapBuilder, projectView);
     assertThat(
-            result
-                .libraries
-                .values()
-                .stream()
+            result.libraries.values().stream()
                 .map(BlazeJavaWorkspaceImporterTest::libraryFileName)
                 .collect(Collectors.toList()))
-        .containsExactly("source.jar");
+        .containsExactly("source.jar", "generated.jar");
   }
 
   /* Utility methods */
@@ -1610,25 +1669,6 @@ public class BlazeJavaWorkspaceImporterTest extends BlazeTestCase {
 
   private static String jdepsPath(String relativePath) {
     return FAKE_GEN_ROOT_EXECUTION_PATH_FRAGMENT + "/" + relativePath;
-  }
-
-  private static class MockRemoteArtifactPrefetcher implements RemoteArtifactPrefetcher {
-
-    @Override
-    public ListenableFuture<?> loadFilesInJvm(Collection<RemoteOutputArtifact> outputArtifacts) {
-      return Futures.immediateFuture(null);
-    }
-
-    @Override
-    public ListenableFuture<?> downloadArtifacts(
-        String projectName, Collection<RemoteOutputArtifact> outputArtifacts) {
-      return Futures.immediateFuture(null);
-    }
-
-    @Override
-    public ListenableFuture<?> cleanupLocalCacheDir(String projectName) {
-      return Futures.immediateFuture(null);
-    }
   }
 
   private static class MockJarCache extends JarCache {

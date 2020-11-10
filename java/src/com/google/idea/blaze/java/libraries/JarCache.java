@@ -278,7 +278,8 @@ public class JarCache {
                       try {
                         copyLocally(artifact, cacheFileForKey(key));
                       } catch (IOException e) {
-                        logger.warn(e);
+                        logger.warn(
+                            String.format("Fail to copy artifact %s to %s", artifact, cacheDir), e);
                       }
                     })));
     return futures;
@@ -389,7 +390,9 @@ public class JarCache {
    */
   private static File patchExternalFilePath(File maybeExternal) {
     String externalString = maybeExternal.toString();
-    if (externalString.contains("/external/") && !externalString.contains("/bazel-out/")) {
+    if (externalString.contains("/external/")
+        && !externalString.contains("/bazel-out/")
+        && !externalString.contains("/blaze-out/")) {
       return new File(externalString.replaceAll("/execroot.*/external/", "/external/"));
     }
     return maybeExternal;

@@ -21,12 +21,12 @@ java_library(
     visibility = ["//visibility:public"],
     deps = [
         "//common/actions",
-        "//common/binaryhelper",
-        "//common/concurrency",
         "//common/experiments",
-        "//common/formatter",
         "//common/settings",
-        "//common/transactions",
+        "//common/util:binaryhelper",
+        "//common/util:concurrency",
+        "//common/util:platform",
+        "//common/util:transactions",
         "//intellij_platform_sdk:jsr305",
         "//intellij_platform_sdk:plugin_api",
         "//proto:proto_deps",
@@ -39,13 +39,12 @@ java_library(
 intellij_plugin_library(
     name = "plugin_library",
     plugin_xmls = ["src/META-INF/blaze-base.xml"] + select_for_plugin_api({
-        "android-studio-4.0": [],
         "android-studio-4.1": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
         "android-studio-4.2": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
-        "intellij-2019.3": [],
-        "intellij-ue-2019.3": [],
         "intellij-2020.1": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
         "intellij-ue-2020.1": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
+        "intellij-2020.2": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
+        "intellij-ue-2020.2": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
         "clion-2019.3": [],
         "clion-2020.1": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
     }),
@@ -67,6 +66,18 @@ java_library(
         "//intellij_platform_sdk:jsr305",
         "//intellij_platform_sdk:plugin_api",
         "//proto:proto_deps",
+    ],
+)
+
+# self-contained custom formatter API, exposed so other plugins can optionally depend on it
+java_library(
+    name = "formatter_api",
+    srcs = glob(["src/com/google/idea/blaze/base/formatter/*.java"]),
+    neverlink = 1,
+    deps = [
+        "//intellij_platform_sdk:jsr305",
+        "//intellij_platform_sdk:plugin_api",
+        "//sdkcompat",
     ],
 )
 
@@ -120,6 +131,34 @@ java_library(
     neverlink = 1,
     visibility = ["//visibility:public"],
     deps = [
+        "//intellij_platform_sdk:plugin_api",
+    ],
+)
+
+# neverlink library exposed so other plugins can optionally depend on it
+java_library(
+    name = "vfs_api",
+    srcs = [
+        "src/com/google/idea/blaze/base/io/VfsUtils.java",
+        "src/com/google/idea/blaze/base/io/VirtualFileSystemProvider.java",
+    ],
+    neverlink = 1,
+    deps = [
+        "//intellij_platform_sdk:jsr305",
+        "//intellij_platform_sdk:plugin_api",
+    ],
+)
+
+# neverlink library exposed so other plugins can optionally depend on it
+java_library(
+    name = "absolute_path_patcher_api",
+    srcs = [
+        "src/com/google/idea/blaze/base/io/AbsolutePathPatcher.java",
+    ],
+    neverlink = 1,
+    deps = [
+        ":vfs_api",
+        "//intellij_platform_sdk:jsr305",
         "//intellij_platform_sdk:plugin_api",
     ],
 )
@@ -229,6 +268,7 @@ java_library(
 java_library(
     name = "build_batching_service_api",
     srcs = [
+        "src/com/google/idea/blaze/base/settings/BuildBinaryType.java",
         "src/com/google/idea/blaze/base/sync/sharding/BuildBatchingService.java",
     ],
     neverlink = 1,
@@ -260,6 +300,7 @@ java_library(
     srcs = [
         "src/com/google/idea/blaze/base/async/FutureUtil.java",
         "src/com/google/idea/blaze/base/command/buildresult/RemoteOutputArtifact.java",
+        "src/com/google/idea/blaze/base/prefetch/DefaultPrefetcher.java",
         "src/com/google/idea/blaze/base/prefetch/FetchExecutor.java",
         "src/com/google/idea/blaze/base/prefetch/RemoteArtifactPrefetcher.java",
     ],

@@ -25,6 +25,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.attribute.FileTime;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.logging.Level;
@@ -36,6 +37,9 @@ import java.util.zip.ZipOutputStream;
 /** Zip comma-separate list of resource files and a manifest file into as an AAR file */
 public class CreateAar {
   private static final Logger logger = Logger.getLogger(JarFilter.class.getName());
+
+  private static final String AAR_MANIFEST_NAME = "AndroidManifest.xml";
+  private static final String AAR_RESOURCE_DIR = "res";
 
   private static File fileParser(String string) {
     return new File(string);
@@ -92,10 +96,11 @@ public class CreateAar {
       try (FileOutputStream fos = new FileOutputStream(options.outputAar.getPath());
           ZipOutputStream zos = new ZipOutputStream(fos)) {
         for (File resourceFile : options.resourceFiles) {
-          int startIndex = options.resourceRoot.length() - 3;
-          addFileToAar(resourceFile, resourceFile.getPath().substring(startIndex), zos);
+          int startIndex = options.resourceRoot.length();
+          addFileToAar(
+              resourceFile, AAR_RESOURCE_DIR + resourceFile.getPath().substring(startIndex), zos);
         }
-        addFileToAar(options.manifestFile, options.manifestFile.getName(), zos);
+        addFileToAar(options.manifestFile, AAR_MANIFEST_NAME, zos);
       } catch (FileNotFoundException e) {
         logger.log(Level.SEVERE, "Fail to generate aar file", e);
       } catch (IOException e) {
@@ -107,6 +112,9 @@ public class CreateAar {
   public static void addFileToAar(File file, String dest, ZipOutputStream zos) throws IOException {
     try (FileInputStream fis = new FileInputStream(file)) {
       ZipEntry zipEntry = new ZipEntry(dest);
+      // reset creation time of entry to make it deterministic
+      zipEntry.setTime(0);
+      zipEntry.setCreationTime(FileTime.fromMillis(0));
       zos.putNextEntry(zipEntry);
       ByteStreams.copy(fis, zos);
       zos.closeEntry();

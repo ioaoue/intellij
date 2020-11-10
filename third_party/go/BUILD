@@ -8,10 +8,10 @@ java_library(
     name = "go_internal",
     visibility = ["//visibility:private"],
     exports = select_for_plugin_api({
-        "intellij-2019.3": ["@go_2019_3//:go"],
-        "intellij-ue-2019.3": ["@go_2019_3//:go"],
         "intellij-2020.1": ["@go_2020_1//:go"],
         "intellij-ue-2020.1": ["@go_2020_1//:go"],
+        "intellij-2020.2": ["@go_2020_2//:go"],
+        "intellij-ue-2020.2": ["@go_2020_2//:go"],
         "default": [],
     }),
 )
