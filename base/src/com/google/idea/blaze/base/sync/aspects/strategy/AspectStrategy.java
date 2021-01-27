@@ -18,16 +18,18 @@ package com.google.idea.blaze.base.sync.aspects.strategy;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.devtools.intellij.ideinfo.IntellijIdeInfo;
 import com.google.idea.blaze.base.command.BlazeCommand;
 import com.google.idea.blaze.base.command.buildresult.BlazeArtifact;
 import com.google.idea.blaze.base.model.BlazeVersionData;
 import com.google.idea.blaze.base.model.primitives.LanguageClass;
 import com.google.idea.common.experiments.BoolExperiment;
-import com.google.repackaged.protobuf.TextFormat;
+import com.google.repackaged.bazel.protobuf.TextFormat;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -110,20 +112,52 @@ public abstract class AspectStrategy {
   }
 
   /**
+   * Collects the names of output groups created by the aspect and by registered {@link
+   * OutputGroupsProvider} extensions for the given {@link OutputGroup} and languages.
+   *
+   * <p>Delegates to {@link #getBaseOutputGroups(OutputGroup, Set, boolean)}, and {@link
+   * #getAdditionalOutputGroups(OutputGroup, Set)}
+   */
+  private ImmutableList<String> getOutputGroups(
+      OutputGroup outputGroup, Set<LanguageClass> activeLanguages, boolean directDepsOnly) {
+    TreeSet<String> outputGroups = new TreeSet<>();
+
+    outputGroups.addAll(getBaseOutputGroups(outputGroup, activeLanguages, directDepsOnly));
+    outputGroups.addAll(getAdditionalOutputGroups(outputGroup, activeLanguages));
+
+    return ImmutableList.copyOf(outputGroups);
+  }
+
+  /**
    * Get the names of the output groups created by the aspect for the given {@link OutputGroup} and
    * languages.
    */
-  public final ImmutableList<String> getOutputGroups(
+  @VisibleForTesting
+  public final ImmutableList<String> getBaseOutputGroups(
       OutputGroup outputGroup, Set<LanguageClass> activeLanguages, boolean directDepsOnly) {
-    TreeSet<String> outputGroups = new TreeSet<>();
+    ImmutableList.Builder<String> outputGroupsBuilder = ImmutableList.builder();
     if (outputGroup.equals(OutputGroup.INFO)) {
-      outputGroups.add(outputGroup.prefix + "generic");
+      outputGroupsBuilder.add(outputGroup.prefix + "generic");
     }
     activeLanguages.stream()
         .map(l -> getOutputGroupForLanguage(outputGroup, l, directDepsOnly))
         .filter(Objects::nonNull)
-        .forEach(outputGroups::add);
-    return ImmutableList.copyOf(outputGroups);
+        .forEach(outputGroupsBuilder::add);
+    return outputGroupsBuilder.build();
+  }
+
+  /** Collects the names of output groups from registered {@link OutputGroupsProvider} extensions */
+  private static ImmutableList<String> getAdditionalOutputGroups(
+      OutputGroup outputGroup, Set<LanguageClass> activeLanguages) {
+    return OutputGroupsProvider.EP_NAME
+        .extensions()
+        .flatMap(
+            p ->
+                p
+                    .getAdditionalOutputGroups(outputGroup, ImmutableSet.copyOf(activeLanguages))
+                    .stream())
+        .filter(Objects::nonNull)
+        .collect(ImmutableList.toImmutableList());
   }
 
   public final IntellijIdeInfo.TargetIdeInfo readAspectFile(BlazeArtifact file) throws IOException {

@@ -41,12 +41,14 @@ intellij_plugin_library(
     plugin_xmls = ["src/META-INF/blaze-base.xml"] + select_for_plugin_api({
         "android-studio-4.1": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
         "android-studio-4.2": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
+        "android-studio-2020.3": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
         "intellij-2020.1": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
         "intellij-ue-2020.1": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
         "intellij-2020.2": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
         "intellij-ue-2020.2": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
         "clion-2019.3": [],
         "clion-2020.1": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
+        "clion-2020.2": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
     }),
     visibility = ["//visibility:public"],
     deps = [":base"],
@@ -295,6 +297,29 @@ java_library(
     ],
 )
 
+# exposed so g3plugins tests can optionally depend on it
+java_library(
+    name = "remote_file_prefetcher_for_tests",
+    testonly = 1,
+    srcs = [
+        "src/com/google/idea/blaze/base/async/FutureUtil.java",
+        "src/com/google/idea/blaze/base/command/buildresult/BlazeArtifact.java",
+        "src/com/google/idea/blaze/base/command/buildresult/OutputArtifact.java",
+        "src/com/google/idea/blaze/base/command/buildresult/OutputArtifactParser.java",
+        "src/com/google/idea/blaze/base/command/buildresult/RemoteOutputArtifact.java",
+        "src/com/google/idea/blaze/base/ideinfo/ProtoWrapper.java",
+        "src/com/google/idea/blaze/base/prefetch/DefaultPrefetcher.java",
+        "src/com/google/idea/blaze/base/prefetch/FetchExecutor.java",
+        "src/com/google/idea/blaze/base/prefetch/RemoteArtifactPrefetcher.java",
+    ],
+    deps = [
+        ":base",
+        "//intellij_platform_sdk:jsr305",
+        "//intellij_platform_sdk:plugin_api",
+        "//proto:proto_deps",
+    ],
+)
+
 java_library(
     name = "remote_file_prefetcher",
     srcs = [
@@ -374,6 +399,7 @@ intellij_unit_test_suite(
         "//intellij_platform_sdk:test_libs",
         "//proto:proto_deps",
         "//sdkcompat",
+        "//testing:lib",
         "@junit//jar",
     ],
 )

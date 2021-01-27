@@ -57,7 +57,7 @@ proto_library(
     deps = [
         ":common_proto",
         ":intellij_ide_info_proto",
-        "@bazel//src/main/protobuf:build_proto",
+        "//third_party/bazel/src/main/protobuf:build_proto",
     ],
 )
 
@@ -76,6 +76,13 @@ java_proto_library(
     deps = [":intellij_plugin_target_deploy_info_proto"],
 )
 
+# Used in GitHub only.
+java_binary(
+    name = "jarjar_runner",
+    main_class = "org.pantsbuild.jarjar.Main",
+    runtime_deps = ["@jarjar//jar"],
+)
+
 genrule(
     name = "repackaged_proto_deps",
     srcs = [
@@ -84,13 +91,13 @@ genrule(
     ],
     outs = [":repackaged_proto_deps.jar"],
     cmd = """
-    $(location @bazel_tools//third_party/jarjar:jarjar_bin) \
+    $(location :jarjar_runner) \
         process \
         $(location :jarjar_protobuf_rule.txt) \
         $(location :proto_deps_binary_deploy.jar) \
         $@
     """,
-    tools = ["@bazel_tools//third_party/jarjar:jarjar_bin"],
+    tools = [":jarjar_runner"],
 )
 
 java_binary(
@@ -101,10 +108,10 @@ java_binary(
         ":intellij_ide_info_java_proto",
         ":intellij_plugin_target_deploy_info_java_proto",
         ":project_data_java_proto",
-        "@bazel//src/main/java/com/google/devtools/build/lib/buildeventstream/proto:build_event_stream_java_proto",
-        "@bazel//src/main/java/com/google/devtools/build/lib/starlarkdebug/proto:starlark_debugging_java_proto",
-        "@bazel//src/main/protobuf:android_deploy_info_java_proto",
-        "@bazel//src/main/protobuf:build_java_proto",
-        "@bazel//src/main/protobuf:deps_java_proto",
+        "//third_party/bazel/src/main/java/com/google/devtools/build/lib/buildeventstream/proto:build_event_stream_java_proto",
+        "//third_party/bazel/src/main/java/com/google/devtools/build/lib/starlarkdebug/proto:starlark_debugging_java_proto",
+        "//third_party/bazel/src/main/protobuf:android_deploy_info_java_proto",
+        "//third_party/bazel/src/main/protobuf:build_java_proto",
+        "//third_party/bazel/src/main/protobuf:deps_java_proto",
     ],
 )

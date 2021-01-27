@@ -16,7 +16,6 @@
 package com.google.idea.blaze.android.projectsystem;
 
 import static org.jetbrains.android.dom.manifest.AndroidManifestUtils.getPackageName;
-import static org.jetbrains.android.facet.SourceProviderUtil.createIdeaSourceProviderFromModelSourceProvider;
 import static org.jetbrains.android.facet.SourceProviderUtil.createSourceProvidersForLegacyModule;
 
 import com.android.tools.apk.analyzer.AaptInvoker;
@@ -24,7 +23,7 @@ import com.android.tools.idea.log.LogWrapper;
 import com.android.tools.idea.model.AndroidModel;
 import com.android.tools.idea.projectsystem.AndroidModuleSystem;
 import com.android.tools.idea.projectsystem.AndroidProjectSystem;
-import com.android.tools.idea.projectsystem.NamedIdeaSourceProvider;
+import com.android.tools.idea.projectsystem.ProjectSystemBuildManager;
 import com.android.tools.idea.projectsystem.ProjectSystemSyncManager;
 import com.android.tools.idea.projectsystem.SourceProviders;
 import com.android.tools.idea.projectsystem.SourceProvidersFactory;
@@ -46,12 +45,9 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.android.facet.SourceProviderManager;
-import org.jetbrains.android.facet.SourceProvidersImpl;
-import org.jetbrains.annotations.NotNull;
 
 /**
  * Base class to implement common methods in {@link AndroidProjectSystem} for blaze with different
@@ -61,10 +57,12 @@ public class BlazeProjectSystem implements AndroidProjectSystem {
   protected final Project project;
   protected final ProjectSystemSyncManager syncManager;
   protected final List<PsiElementFinder> myFinders;
+  private final BlazeProjectSystemBuildManager buildManager;
 
   public BlazeProjectSystem(Project project) {
     this.project = project;
     syncManager = new BlazeProjectSystemSyncManager(project);
+    buildManager = new BlazeProjectSystemBuildManager(project);
 
     myFinders =
         Arrays.asList(
@@ -90,21 +88,14 @@ public class BlazeProjectSystem implements AndroidProjectSystem {
         new LogWrapper(BlazeProjectSystem.class));
   }
 
-  @Override
+  // @Override #api42
   public void buildProject() {
     BlazeBuildService.getInstance().buildProject(project);
   }
 
-  // @Override #api3.6
-  public String mergeBuildFiles(
-      String dependencies, String destinationContents, @Nullable String supportLibVersionFilter) {
-    // TODO: check if necessary to implement.
-    return "";
-  }
-
-  // #api 3.4
-  public boolean upgradeProjectToSupportInstantRun() {
-    return false;
+  // @Override #api42
+  public ProjectSystemBuildManager getBuildManager() {
+    return buildManager;
   }
 
   @Override
@@ -117,36 +108,24 @@ public class BlazeProjectSystem implements AndroidProjectSystem {
     return syncManager;
   }
 
-  @Nonnull
   @Override
   public Collection<PsiElementFinder> getPsiElementFinders() {
     return myFinders;
   }
 
-  @Nonnull
   @Override
   public BlazeLightResourceClassService getLightResourceClassService() {
     return BlazeLightResourceClassService.getInstance(project);
   }
 
-  @NotNull
   @Override
   public SourceProvidersFactory getSourceProvidersFactory() {
     return new SourceProvidersFactory() {
-      @Nullable
       @Override
-      public SourceProviders createSourceProvidersFor(@NotNull AndroidFacet facet) {
+      public SourceProviders createSourceProvidersFor(AndroidFacet facet) {
         BlazeAndroidModel model = ((BlazeAndroidModel) AndroidModel.get(facet));
         if (model != null) {
-          NamedIdeaSourceProvider mainSourceProvider =
-              createIdeaSourceProviderFromModelSourceProvider(model.getDefaultSourceProvider());
-          return new SourceProvidersImpl(
-              mainSourceProvider,
-              ImmutableList.of(mainSourceProvider),
-              ImmutableList.of(mainSourceProvider),
-              ImmutableList.of(mainSourceProvider),
-              ImmutableList.of(mainSourceProvider),
-              ImmutableList.of(mainSourceProvider));
+          return SourceProvidersCompat.forModel(model);
         } else {
           return createSourceProvidersForLegacyModule(facet);
         }
@@ -154,10 +133,9 @@ public class BlazeProjectSystem implements AndroidProjectSystem {
     };
   }
 
-  @NotNull
-  // #api41 @Override
+  @Override
   public Collection<AndroidFacet> getAndroidFacetsWithPackageName(
-      @NotNull Project project, @NotNull String packageName, @NotNull GlobalSearchScope scope) {
+      Project project, String packageName, GlobalSearchScope scope) {
     List<AndroidFacet> facets = ProjectFacetManager.getInstance(project).getFacets(AndroidFacet.ID);
     return facets.stream()
         .filter(facet -> hasPackageName(facet, packageName))
@@ -173,7 +151,6 @@ public class BlazeProjectSystem implements AndroidProjectSystem {
         .collect(Collectors.toList());
   }
 
-  @NotNull
   @Override
   public Collection<Module> getSubmodules() {
     return ImmutableList.of();

@@ -171,17 +171,24 @@ config_setting(
 )
 
 config_setting(
-    name = "android-studio-4.1-mac",
+    name = "android-studio-4.2",
     values = {
-        "cpu": "darwin_x86_64",
-        "define": "ij_product=android-studio-4.1",
+        "define": "ij_product=android-studio-4.2",
     },
 )
 
 config_setting(
-    name = "android-studio-4.2",
+    name = "android-studio-4.2-mac",
     values = {
+        "cpu": "darwin_x86_64",
         "define": "ij_product=android-studio-4.2",
+    },
+)
+
+config_setting(
+    name = "android-studio-2020.3",
+    values = {
+        "define": "ij_product=android-studio-2020.3",
     },
 )
 
@@ -237,6 +244,21 @@ config_setting(
     },
 )
 
+config_setting(
+    name = "clion-2020.2",
+    values = {
+        "define": "ij_product=clion-2020.2",
+    },
+)
+
+config_setting(
+    name = "clion-2020.2-mac",
+    values = {
+        "cpu": "darwin_x86_64",
+        "define": "ij_product=clion-2020.2",
+    },
+)
+
 # The purpose of this rule is to hide the versioning
 # complexity from users of this api.
 # There will be additional versions added in the future
@@ -265,6 +287,13 @@ java_library(
 java_library(
     name = "plugin_api_for_tests",
     testonly = 1,
+    data = select_from_plugin_api_directory(
+        android_studio = [
+            ":layoutlib_data",
+        ],
+        clion = [],
+        intellij = [],
+    ),
     exports = [":plugin_api_internal"],
 )
 
@@ -335,13 +364,32 @@ java_library(
 java_library(
     name = "jsr305",
     exports = select_for_plugin_api({
-        "clion-2019.3": ["@jsr305_annotations//jar"],
-        "clion-2020.1": ["@jsr305_annotations//jar"],
+        "clion-2019.3": [":bundled_jsr305"],
+        "clion-2020.1": [":bundled_jsr305"],
+        "clion-2020.2": [":bundled_jsr305"],
+        "intellij-2020.1": [":bundled_jsr305"],
+        "intellij-2020.2": [":bundled_jsr305"],
         "intellij-ue-2020.1": ["@jsr305_annotations//jar"],
         "intellij-ue-2020.2": ["@jsr305_annotations//jar"],
+        "android-studio-4.1": [":bundled_jsr305"],
         "android-studio-4.2": ["@jsr305_annotations//jar"],
-        "default": [":plugin_api"],
+        "android-studio-2020.3": ["@jsr305_annotations//jar"],
+        # Some test libraries depend on this, yet can be used without ij_product.
+        # Assume that if ij_product is missing, this dependency won't be used.
+        "default": [],
     }),
+)
+
+# The version of jsr305 bundled with the IntelliJ plugin API.
+java_library(
+    name = "bundled_jsr305",
+    neverlink = 1,
+    visibility = ["//visibility:private"],
+    exports = select_from_plugin_api_directory(
+        android_studio = [":jsr305"],
+        clion = [":jsr305"],
+        intellij = [":jsr305"],
+    ),
 )
 
 # The version of truth bundled with the IntelliJ plugin API.

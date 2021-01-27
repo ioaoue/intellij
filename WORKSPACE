@@ -1,6 +1,5 @@
 workspace(name = "intellij_with_bazel")
 
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:jvm.bzl", "jvm_maven_import_external")
 
@@ -15,7 +14,7 @@ http_archive(
     url = "https://www.jetbrains.com/intellij-repository/releases/com/jetbrains/intellij/idea/ideaIC/2020.1.4/ideaIC-2020.1.4.zip",
 )
 
-# The plugin api for IntelliJ 2020.1. This is required to build IJwB,
+# The plugin api for IntelliJ 2020.2. This is required to build IJwB,
 # and run integration tests.
 http_archive(
     name = "intellij_ce_2020_2",
@@ -33,7 +32,7 @@ http_archive(
     url = "https://www.jetbrains.com/intellij-repository/releases/com/jetbrains/intellij/idea/ideaIU/2020.1.4/ideaIU-2020.1.4.zip",
 )
 
-# The plugin api for IntelliJ UE 2020.1. This is required to run UE-specific
+# The plugin api for IntelliJ UE 2020.2. This is required to run UE-specific
 # integration tests.
 http_archive(
     name = "intellij_ue_2020_2",
@@ -51,13 +50,22 @@ http_archive(
     url = "https://download.jetbrains.com/cpp/CLion-2019.3.6.tar.gz",
 )
 
-# The plugin api for CLion 2019.3. This is required to build CLwB,
+# The plugin api for CLion 2020.1. This is required to build CLwB,
 # and run integration tests.
 http_archive(
     name = "clion_2020_1",
     build_file = "@//intellij_platform_sdk:BUILD.clion201",
     sha256 = "a95c27cf367f7b698b4bb1f5649f8399c29f4031bcf6b133336d0d75169f4b97",
     url = "https://download.jetbrains.com/cpp/CLion-2020.1.3.tar.gz",
+)
+
+# The plugin api for CLion 2020.2. This is required to build CLwB,
+# and run integration tests.
+http_archive(
+    name = "clion_2020_2",
+    build_file = "@//intellij_platform_sdk:BUILD.clion202",
+    sha256 = "3f7b37574ec4106fb92377722c12200a759d12487409e14214166acc11ecef48",
+    url = "https://download.jetbrains.com/cpp/CLion-2020.2.5.tar.gz",
 )
 
 # Python plugin for IntelliJ CE. Required at compile-time for python-specific features.
@@ -122,7 +130,7 @@ http_archive(
     build_file_content = "\n".join([
         "java_import(",
         "    name = 'go',",
-        "    jars = glob(['intellij-go/lib/*.jar']),",
+        "    jars = glob(['go/lib/*.jar']),",
         "    visibility = ['//visibility:public'],",
         ")",
     ]),
@@ -163,8 +171,8 @@ http_archive(
 http_archive(
     name = "android_studio_4_1",
     build_file = "@//intellij_platform_sdk:BUILD.android_studio41",
-    sha256 = "4b9521fc4a6313ad65ff3e14b0f3fb50427d464fe14227555565f46e0ffad202",
-    url = "https://dl.google.com/dl/android/studio/ide-zips/4.1.0.19/android-studio-ide-201.6858069-linux.tar.gz",
+    sha256 = "68032184959c54576f119b7c7c8ded175d848374f3954fa450530d78260dd68b",
+    url = "https://dl.google.com/dl/android/studio/ide-zips/4.1.1.0/android-studio-ide-201.6953283-linux.tar.gz",
 )
 
 # The plugin api for Android Studio 4.2. This is required to build ASwB,
@@ -172,8 +180,17 @@ http_archive(
 http_archive(
     name = "android_studio_4_2",
     build_file = "@//intellij_platform_sdk:BUILD.android_studio42",
-    sha256 = "df9e33c751b9e7227168a2a87a2062c72fec06cd85c6054fc626950f5a363ab1",
-    url = "https://dl.google.com/dl/android/studio/ide-zips/4.2.0.7/android-studio-ide-201.6720134-linux.tar.gz",
+    sha256 = "84c7bb88cf26d4f6946f39d165fade4495ee8dc3204df38d77c09b60614af90c",
+    url = "https://dl.google.com/dl/android/studio/ide-zips/4.2.0.19/android-studio-ide-202.7033425-linux.tar.gz",
+)
+
+# The plugin api for Android Studio 2020.3. This is required to build ASwB,
+# and run integration tests.
+http_archive(
+    name = "android_studio_2020_3",
+    build_file = "@//intellij_platform_sdk:BUILD.android_studio203",
+    sha256 = "64eae480f415cad604e37d50154e4f8cedba0d13ee6a5b1e3e63019c1f81b915",
+    url = "https://dl.google.com/dl/android/studio/ide-zips/2020.3.1.4/android-studio-2020.3.1.4-linux.tar.gz",
 )
 
 # LICENSE: Common Public License 1.0
@@ -235,8 +252,28 @@ jvm_maven_import_external(
 
 jvm_maven_import_external(
     name = "jarjar",
-    artifact = "com.googlecode.jarjar:jarjar:1.3",
-    artifact_sha256 = "4225c8ee1bf3079c4b07c76fe03c3e28809a22204db6249c9417efa4f804b3a7",
+    artifact = "org.pantsbuild:jarjar:1.7.2",
+    artifact_sha256 = "0706a455e17b67718abe212e3a77688bbe8260852fc74e3e836d9f2e76d91c27",
+    licenses = ["notice"],  # Apache 2.0
+    server_urls = ["https://repo1.maven.org/maven2"],
+    deps = [
+        "@asm",
+        "@asm-commons",
+    ],
+)
+
+jvm_maven_import_external(
+    name = "asm",
+    artifact = "org.ow2.asm:asm:7.0",
+    artifact_sha256 = "b88ef66468b3c978ad0c97fd6e90979e56155b4ac69089ba7a44e9aa7ffe9acf",
+    licenses = ["notice"],  # Apache 2.0
+    server_urls = ["https://repo1.maven.org/maven2"],
+)
+
+jvm_maven_import_external(
+    name = "asm-commons",
+    artifact = "org.ow2.asm:asm-commons:7.0",
+    artifact_sha256 = "fed348ef05958e3e846a3ac074a12af5f7936ef3d21ce44a62c4fa08a771927d",
     licenses = ["notice"],  # Apache 2.0
     server_urls = ["https://repo1.maven.org/maven2"],
 )
@@ -263,12 +300,6 @@ jvm_maven_import_external(
     artifact_sha256 = "524b43ea15ca97c68f10d5f417c4068dc88144b620d2203f0910441a769fd42f",
     licenses = ["notice"],  # Apache 2.0
     server_urls = ["https://repo1.maven.org/maven2"],
-)
-
-git_repository(
-    name = "bazel",
-    branch = "master",
-    remote = "https://github.com/bazelbuild/bazel",
 )
 
 http_archive(

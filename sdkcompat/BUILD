@@ -22,12 +22,14 @@ java_library(
     visibility = ["//visibility:public"],
     exports = select_for_plugin_api({
         "android-studio-4.1": ["//sdkcompat/v201"],
-        "android-studio-4.2": ["//sdkcompat/v201"],
+        "android-studio-4.2": ["//sdkcompat/v202"],
+        "android-studio-2020.3": ["//sdkcompat/v202"],
         "intellij-2020.1": ["//sdkcompat/v201"],
         "intellij-ue-2020.1": ["//sdkcompat/v201"],
         "intellij-2020.2": ["//sdkcompat/v202"],
         "intellij-ue-2020.2": ["//sdkcompat/v202"],
         "clion-2019.3": ["//sdkcompat/v193"],
         "clion-2020.1": ["//sdkcompat/v201"],
+        "clion-2020.2": ["//sdkcompat/v202"],
     }),
 )

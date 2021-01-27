@@ -20,10 +20,11 @@ syntax = "proto3";
 
 package blaze;
 
-import "bazel/src/main/protobuf/build.proto";
+import "third_party/bazel/src/main/protobuf/build.proto";
 import "proto/common.proto";
 import "proto/intellij_ide_info.proto";
 
+// option java_api_version = 2;
 option java_package = "com.google.devtools.intellij.model";
 
 message TargetMap {
@@ -157,6 +158,9 @@ message AndroidResourceModule {
   repeated ArtifactLocation transitive_resources = 3;
   repeated string resource_library_keys = 4;  // added in 3.3
   repeated TargetKey transitive_resource_dependencies = 5;
+  // targets that contribute resources to the AndroidResourceModule,
+  // including target_key
+  repeated TargetKey source_target_keys = 6;
 }
 
 message BlazeJarLibrary {
@@ -167,6 +171,7 @@ message BlazeJarLibrary {
 message AarLibrary {
   LibraryArtifact library_artifact = 1;
   ArtifactLocation aar_artifact = 2;
+  string resource_package = 3;
 }
 
 message BlazeResourceLibrary {
