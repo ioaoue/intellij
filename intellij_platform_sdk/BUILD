@@ -105,6 +105,21 @@ config_setting(
 )
 
 config_setting(
+    name = "intellij-2020.3",
+    values = {
+        "define": "ij_product=intellij-2020.3",
+    },
+)
+
+config_setting(
+    name = "intellij-2020.3-mac",
+    values = {
+        "cpu": "darwin_x86_64",
+        "define": "ij_product=intellij-2020.3",
+    },
+)
+
+config_setting(
     name = "intellij-ue-2020.1",
     values = {
         "define": "ij_product=intellij-ue-2020.1",
@@ -131,6 +146,21 @@ config_setting(
     values = {
         "cpu": "darwin_x86_64",
         "define": "ij_product=intellij-ue-2020.2",
+    },
+)
+
+config_setting(
+    name = "intellij-ue-2020.3",
+    values = {
+        "define": "ij_product=intellij-ue-2020.3",
+    },
+)
+
+config_setting(
+    name = "intellij-ue-2020.3-mac",
+    values = {
+        "cpu": "darwin_x86_64",
+        "define": "ij_product=intellij-ue-2020.3",
     },
 )
 
@@ -369,8 +399,10 @@ java_library(
         "clion-2020.2": [":bundled_jsr305"],
         "intellij-2020.1": [":bundled_jsr305"],
         "intellij-2020.2": [":bundled_jsr305"],
+        "intellij-2020.3": [":bundled_jsr305"],
         "intellij-ue-2020.1": ["@jsr305_annotations//jar"],
         "intellij-ue-2020.2": ["@jsr305_annotations//jar"],
+        "intellij-ue-2020.3": [":bundled_jsr305"],
         "android-studio-4.1": [":bundled_jsr305"],
         "android-studio-4.2": ["@jsr305_annotations//jar"],
         "android-studio-2020.3": ["@jsr305_annotations//jar"],

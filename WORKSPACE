@@ -23,6 +23,15 @@ http_archive(
     url = "https://www.jetbrains.com/intellij-repository/releases/com/jetbrains/intellij/idea/ideaIC/2020.2.2/ideaIC-2020.2.2.zip",
 )
 
+# The plugin api for IntelliJ 2020.3. This is required to build IJwB,
+# and run integration tests.
+http_archive(
+    name = "intellij_ce_2020_3",
+    build_file = "@//intellij_platform_sdk:BUILD.idea203",
+    sha256 = "2c621e40a8a965c7ea5e1005652d1d1dd80b8fe4241be13ef3d4df2c0b2d72c5",
+    url = "https://www.jetbrains.com/intellij-repository/releases/com/jetbrains/intellij/idea/ideaIC/2020.3.1/ideaIC-2020.3.1.zip",
+)
+
 # The plugin api for IntelliJ UE 2020.1. This is required to run UE-specific
 # integration tests.
 http_archive(
@@ -39,6 +48,15 @@ http_archive(
     build_file = "@//intellij_platform_sdk:BUILD.ue202",
     sha256 = "434adfaa3e98e7eac8ab3d292086958c9f453b6ab2390e8d5c0a53e945e3f857",
     url = "https://www.jetbrains.com/intellij-repository/releases/com/jetbrains/intellij/idea/ideaIU/2020.2.2/ideaIU-2020.2.2.zip",
+)
+
+# The plugin api for IntelliJ UE 2020.3. This is required to run UE-specific
+# integration tests.
+http_archive(
+    name = "intellij_ue_2020_3",
+    build_file = "@//intellij_platform_sdk:BUILD.ue203",
+    sha256 = "ffd4e98b7a3e7cd40a66e518b01e1fb160fe03071aa6085a543decd7b825b4c3",
+    url = "https://www.jetbrains.com/intellij-repository/releases/com/jetbrains/intellij/idea/ideaIU/2020.3.1/ideaIU-2020.3.1.zip",
 )
 
 # The plugin api for CLion 2019.3. This is required to build CLwB,
@@ -92,7 +110,7 @@ http_archive(
         "    visibility = ['//visibility:public'],",
         ")",
     ]),
-    sha256 = "a3d7217794619dfa0432d922218dd875f49658939c6e5a54c01f99b333d35e12",
+    sha256 = "648438d26e85072f90a62f9f5b9f9b983a49f3cb752e87d01f915cb6a03644b9",
     url = "https://plugins.jetbrains.com/files/7322/88054/python-ce-201.7846.93.zip",
 )
 
@@ -106,8 +124,22 @@ http_archive(
         "    visibility = ['//visibility:public'],",
         ")",
     ]),
-    sha256 = "61eb876781f3fd75f2d9e76cac192672a02e008725ad9d7ac0fbd4e3dcf25b16",
+    sha256 = "6712a9726e9b37ebe39c7b62d2a0835b97f1a366a1d8fcfbd5e81fd6bd414d9e",
     url = "https://plugins.jetbrains.com/files/7322/97141/python-ce-202.7319.64.zip",
+)
+
+# Python plugin for IntelliJ CE. Required at compile-time for python-specific features.
+http_archive(
+    name = "python_2020_3",
+    build_file_content = "\n".join([
+        "java_import(",
+        "    name = 'python',",
+        "    jars = ['python-ce/lib/python-ce.jar'],",
+        "    visibility = ['//visibility:public'],",
+        ")",
+    ]),
+    sha256 = "789e4dd1be7e81e69dd148c281b283b8babbfcd47c4af2d7686b6570b7a45d1b",
+    url = "https://plugins.jetbrains.com/files/7322/106700/python-ce-203.6682.179.zip",
 )
 
 # Go plugin for IntelliJ UE. Required at compile-time for Bazel integration.
@@ -134,8 +166,22 @@ http_archive(
         "    visibility = ['//visibility:public'],",
         ")",
     ]),
-    sha256 = "c020553701939692d165d3607dd94532f97c48d81435f1cb6d927a6723888327",
+    sha256 = "4df0c9ddd51f08176a4b37194ecce1c1b37a3d9bbd484b3129a754a22c7dc79d",
     url = "https://plugins.jetbrains.com/files/9568/97011/go-202.7319.50.zip",
+)
+
+# Go plugin for IntelliJ UE. Required at compile-time for Bazel integration.
+http_archive(
+    name = "go_2020_3",
+    build_file_content = "\n".join([
+        "java_import(",
+        "    name = 'go',",
+        "    jars = glob(['go/lib/*.jar']),",
+        "    visibility = ['//visibility:public'],",
+        ")",
+    ]),
+    sha256 = "4570ea6145590d92fa984e7ae5e7e75a0dc948dc2866e227f22986abed5527a3",
+    url = "https://plugins.jetbrains.com/files/9568/106609/go-203.6682.168.zip",
 )
 
 # Scala plugin for IntelliJ CE. Required at compile-time for scala-specific features.
@@ -148,7 +194,7 @@ http_archive(
         "    visibility = ['//visibility:public'],",
         ")",
     ]),
-    sha256 = "bbc019e7cde3baf21b11f0abde21f42d4606ca5ca9100b3bdace3292f70cceef",
+    sha256 = "626b9c9bc2f90d64498524bd7138558edacf50bbc72a02f882401118a1fc1403",
     url = "https://plugins.jetbrains.com/files/1347/76628/scala-intellij-bin-2020.1.7.zip",
 )
 
@@ -162,8 +208,22 @@ http_archive(
         "    visibility = ['//visibility:public'],",
         ")",
     ]),
-    sha256 = "52004387981df909afaeabb91b032aee51d1860acf7b434d111f261a9e1ed07d",
+    sha256 = "6c29fe5cf0ea2b242adfa2265c8c6e409358640302b6666afc8e023eca237010",
     url = "https://plugins.jetbrains.com/files/1347/97067/scala-intellij-bin-2020.2.27.zip",
+)
+
+# Scala plugin for IntelliJ CE. Required at compile-time for scala-specific features.
+http_archive(
+    name = "scala_2020_3",
+    build_file_content = "\n".join([
+        "java_import(",
+        "    name = 'scala',",
+        "    jars = glob(['Scala/lib/*.jar']),",
+        "    visibility = ['//visibility:public'],",
+        ")",
+    ]),
+    sha256 = "4924ccda4a5d6ee830813efb86966bed8f7caf5a19e9cc1b27fa4e288e57a250",
+    url = "https://plugins.jetbrains.com/files/1347/105697/scala-intellij-bin-2020.3.18.zip",
 )
 
 # The plugin api for Android Studio 4.1. This is required to build ASwB,
@@ -180,8 +240,8 @@ http_archive(
 http_archive(
     name = "android_studio_4_2",
     build_file = "@//intellij_platform_sdk:BUILD.android_studio42",
-    sha256 = "84c7bb88cf26d4f6946f39d165fade4495ee8dc3204df38d77c09b60614af90c",
-    url = "https://dl.google.com/dl/android/studio/ide-zips/4.2.0.19/android-studio-ide-202.7033425-linux.tar.gz",
+    sha256 = "3f322d40ad5c0cb8644627320c4c3d817f4ba1cf7740a411d2efa566b0c38481",
+    url = "https://dl.google.com/dl/android/studio/ide-zips/4.2.0.20/android-studio-ide-202.7094744-linux.tar.gz",
 )
 
 # The plugin api for Android Studio 2020.3. This is required to build ASwB,

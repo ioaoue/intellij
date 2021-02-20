@@ -27,7 +27,6 @@ import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.ui.EditorNotifications;
 import com.intellij.util.xmlb.XmlSerializerUtil;
-import java.util.Objects;
 
 /** Stores blaze view settings. */
 @State(
@@ -68,8 +67,6 @@ public class BlazeUserSettings implements PersistentStateComponent<BlazeUserSett
   private FocusBehavior showBlazeProblemsViewOnSync = FocusBehavior.ALWAYS;
   private FocusBehavior showBlazeConsoleOnRun = FocusBehavior.ALWAYS;
   private FocusBehavior showProblemsViewOnRun = FocusBehavior.NEVER;
-  private boolean resyncAutomatically = false;
-  private boolean resyncOnProtoChanges = false;
   private boolean syncStatusPopupShown = false;
   private boolean expandSyncToWorkingSet = true;
   private boolean showPerformanceWarnings = false;
@@ -78,7 +75,6 @@ public class BlazeUserSettings implements PersistentStateComponent<BlazeUserSett
   private boolean showAddFileToProjectNotification = true;
   private String blazeBinaryPath = DEFAULT_BLAZE_PATH;
   private String bazelBinaryPath = DEFAULT_BAZEL_PATH;
-  private boolean migratedBlazeDefaultPath = false;
 
   public static BlazeUserSettings getInstance() {
     return ServiceManager.getService(BlazeUserSettings.class);
@@ -92,52 +88,6 @@ public class BlazeUserSettings implements PersistentStateComponent<BlazeUserSett
   @Override
   public void loadState(BlazeUserSettings state) {
     XmlSerializerUtil.copyBean(state, this);
-
-    // temporary migration code for macs
-    if (SystemInfo.isMac
-        && !migratedBlazeDefaultPath
-        && Objects.equals(blazeBinaryPath, OLD_DEFAULT_BLAZE_PATH)) {
-      blazeBinaryPath = DEFAULT_BLAZE_PATH;
-      migratedBlazeDefaultPath = true;
-    }
-  }
-
-  /**
-   * @deprecated DO NOT USE: left here temporarily while migrating to a new settings format. Use
-   *     {@link AutoSyncSettings} instead.
-   */
-  @Deprecated
-  public void setResyncAutomatically(boolean resyncAutomatically) {
-    this.resyncAutomatically = resyncAutomatically;
-  }
-
-  /**
-   * Whether we should re-sync on changes to BUILD and project view files.
-   *
-   * @deprecated DO NOT USE: left here temporarily while migrating to a new settings format. Use
-   *     {@link AutoSyncSettings} instead.
-   */
-  @Deprecated
-  public boolean getResyncAutomatically() {
-    return resyncAutomatically;
-  }
-
-  /**
-   * @deprecated DO NOT USE: left here temporarily while migrating to a new settings format. Use
-   *     {@link AutoSyncSettings} instead.
-   */
-  @Deprecated
-  public void setResyncOnProtoChanges(boolean resyncOnProtoChanges) {
-    this.resyncOnProtoChanges = resyncOnProtoChanges;
-  }
-
-  /**
-   * @deprecated DO NOT USE: left here temporarily while migrating to a new settings format. Use
-   *     {@link AutoSyncSettings} instead.
-   */
-  @Deprecated
-  public boolean getResyncOnProtoChanges() {
-    return resyncOnProtoChanges;
   }
 
   public FocusBehavior getShowBlazeConsoleOnSync() {
@@ -268,8 +218,6 @@ public class BlazeUserSettings implements PersistentStateComponent<BlazeUserSett
       builder.put("showBlazeProblemsViewOnSync", settings.showBlazeProblemsViewOnSync.name());
       builder.put("showBlazeConsoleOnRun", settings.showBlazeConsoleOnRun.name());
       builder.put("showProblemsViewOnRun", settings.showProblemsViewOnRun.name());
-      builder.put("resyncAutomatically", Boolean.toString(settings.resyncAutomatically));
-      builder.put("resyncOnProtoChanges", Boolean.toString(settings.resyncOnProtoChanges));
       builder.put("expandSyncToWorkingSet", Boolean.toString(settings.expandSyncToWorkingSet));
       builder.put("formatBuildFilesOnSave", Boolean.toString(settings.formatBuildFilesOnSave));
       builder.put(
@@ -277,7 +225,6 @@ public class BlazeUserSettings implements PersistentStateComponent<BlazeUserSett
           Boolean.toString(settings.showAddFileToProjectNotification));
       builder.put("blazeBinaryPath", settings.blazeBinaryPath);
       builder.put("bazelBinaryPath", settings.bazelBinaryPath);
-      builder.put("migratedBlazeDefaultPath", Boolean.toString(settings.migratedBlazeDefaultPath));
       return builder.build();
     }
   }

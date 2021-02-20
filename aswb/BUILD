@@ -140,36 +140,23 @@ intellij_integration_test_suite(
         "android-studio-4.1": glob(
             ["tests/integrationtests/**/*.java"],
             exclude = [
-                "tests/integrationtests/com/google/idea/blaze/android/AswbGotoDeclarationTest.java",
-                "tests/integrationtests/com/google/idea/blaze/android/cppimpl/debug/BlazeAndroidNativeDebuggingTest.java",
-                "tests/integrationtests/com/google/idea/blaze/android/functional/AswbMergedManifestTest.java",
-                "tests/integrationtests/com/google/idea/blaze/android/functional/BlazeModuleSystemDependentLibrariesIntegrationTest.java",
-                "tests/integrationtests/com/google/idea/blaze/android/plugin/NdkDependenciesTest.java",
-                "tests/integrationtests/com/google/idea/blaze/android/run/DebuggerInfoProviderTest.java",
-                "tests/integrationtests/com/google/idea/blaze/android/run/DebuggerInfoProviderTest.java",
-                "tests/integrationtests/com/google/idea/blaze/android/functional/AswbRenderTaskTest.java",
+                "tests/integrationtests/com/google/idea/blaze/android/cppimpl/debug/BlazeAndroidNativeDebuggingTest.java",  # Required SDK APIs aren't present in api41
+                "tests/integrationtests/com/google/idea/blaze/android/functional/BlazeModuleSystemDependentLibrariesIntegrationTest.java",  # Required SDK APIs aren't present in api41
+                "tests/integrationtests/com/google/idea/blaze/android/plugin/NdkDependenciesTest.java",  # Extracted to separate target
+                "tests/integrationtests/com/google/idea/blaze/android/functional/AswbRenderTaskTest.java",  # Required SDK APIs aren't present in api41
             ],
         ),
         "android-studio-4.2": glob(
             ["tests/integrationtests/**/*.java"],
             exclude = [
-                "tests/integrationtests/com/google/idea/blaze/android/AswbGotoDeclarationTest.java",
-                "tests/integrationtests/com/google/idea/blaze/android/functional/AswbMergedManifestTest.java",
-                "tests/integrationtests/com/google/idea/blaze/android/plugin/NdkDependenciesTest.java",
-                "tests/integrationtests/com/google/idea/blaze/android/run/DebuggerInfoProviderTest.java",
-                "tests/integrationtests/com/google/idea/blaze/android/run/DebuggerInfoProviderTest.java",
+                "tests/integrationtests/com/google/idea/blaze/android/plugin/NdkDependenciesTest.java",  # Extracted to separate target
             ],
         ),
         "android-studio-2020.3": glob(
             ["tests/integrationtests/**/*.java"],
             exclude = [
-                "tests/integrationtests/com/google/idea/blaze/android/AswbGotoDeclarationTest.java",
-                "tests/integrationtests/com/google/idea/blaze/android/functional/AswbMergedManifestTest.java",
-                "tests/integrationtests/com/google/idea/blaze/android/plugin/NdkDependenciesTest.java",
-                "tests/integrationtests/com/google/idea/blaze/android/run/DebuggerInfoProviderTest.java",
-                "tests/integrationtests/com/google/idea/blaze/android/run/DebuggerInfoProviderTest.java",
-                # b/177371104
-                "tests/integrationtests/com/google/idea/blaze/android/functional/AswbRenderTaskTest.java",
+                "tests/integrationtests/com/google/idea/blaze/android/plugin/NdkDependenciesTest.java",  # Extracted to separate target
+                "tests/integrationtests/com/google/idea/blaze/android/functional/AswbRenderTaskTest.java",  # b/177371104
             ],
         ),
     }),
@@ -194,7 +181,6 @@ intellij_integration_test_suite(
         "//common/experiments",
         "//common/experiments:unit_test_utils",
         "//cpp",
-        "//intellij_platform_sdk:jsr305",
         "//intellij_platform_sdk:plugin_api_for_tests",
         "//intellij_platform_sdk:test_libs",
         "//java",
