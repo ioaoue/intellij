@@ -18,12 +18,10 @@ package com.google.idea.blaze.android.projectsystem;
 import com.android.tools.idea.projectsystem.ClassFileFinderUtil;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
+import com.google.idea.blaze.android.libraries.RenderJarCache;
 import com.google.idea.blaze.android.sync.model.AndroidResourceModule;
 import com.google.idea.blaze.android.sync.model.AndroidResourceModuleRegistry;
 import com.google.idea.blaze.android.targetmaps.TargetToBinaryMap;
-import com.google.idea.blaze.base.command.buildresult.OutputArtifactResolver;
-import com.google.idea.blaze.base.ideinfo.AndroidIdeInfo;
-import com.google.idea.blaze.base.ideinfo.ArtifactLocation;
 import com.google.idea.blaze.base.ideinfo.TargetIdeInfo;
 import com.google.idea.blaze.base.ideinfo.TargetKey;
 import com.google.idea.blaze.base.io.VirtualFileSystemProvider;
@@ -31,6 +29,7 @@ import com.google.idea.blaze.base.model.BlazeProjectData;
 import com.google.idea.blaze.base.sync.BlazeSyncModificationTracker;
 import com.google.idea.blaze.base.sync.data.BlazeDataStorage;
 import com.google.idea.blaze.base.sync.data.BlazeProjectDataManager;
+import com.google.idea.common.experiments.InternalDevFlag;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.module.Module;
@@ -39,6 +38,7 @@ import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.JarFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import java.io.File;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.jetbrains.annotations.Nullable;
 
@@ -65,6 +65,9 @@ public class RenderJarClassFileFinder implements BlazeClassFileFinder {
   private static final Logger log = Logger.getInstance(RenderJarClassFileFinder.class);
 
   private static final String INTERNAL_PACKAGE = "_layoutlib_._internal_.";
+
+  // matches foo.bar.R or foo.bar.R$baz
+  private static final Pattern RESOURCE_CLASS_NAME = Pattern.compile(".+\\.R(\\$[^.]+)?$");
 
   private final Module module;
   private final Project project;
@@ -101,6 +104,8 @@ public class RenderJarClassFileFinder implements BlazeClassFileFinder {
   @Nullable
   @Override
   public VirtualFile findClassFile(String fqcn) {
+    logOrFailIfRClass(fqcn);
+
     BlazeProjectData projectData =
         BlazeProjectDataManager.getInstance(project).getBlazeProjectData();
     if (projectData == null) {
@@ -146,6 +151,35 @@ public class RenderJarClassFileFinder implements BlazeClassFileFinder {
   }
 
   /**
+   * Checks if given {@code fqcn} is an R class. If {@code fqcn} is an R class: logs a warning for
+   * prod users, or throws an exception for internal devs. No-op if {@code fqcn} is not an R class.
+   */
+  private void logOrFailIfRClass(String fqcn) {
+    if (!isResourceClass(fqcn)) {
+      return;
+    }
+
+    if (InternalDevFlag.isInternalDev() || ApplicationManager.getApplication().isInternal()) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Attempting to load '%s' from Render JAR: R classes are expected to be supplied by"
+                  + " the IDE, not the Render JAR",
+              fqcn));
+    }
+
+    log.warn(
+        String.format(
+            "Attempting to load '%s 'from Render JAR. Loading R classes from Render JAR may lead"
+                + " to errors during layout rendering.",
+            fqcn));
+  }
+
+  @VisibleForTesting
+  static boolean isResourceClass(String fqcn) {
+    return RESOURCE_CLASS_NAME.matcher(fqcn).matches();
+  }
+
+  /**
    * Returns the cached list of binary targets that depend on resource targets. The cache is
    * recalculated if the project has been synced since last calculation
    */
@@ -185,24 +219,11 @@ public class RenderJarClassFileFinder implements BlazeClassFileFinder {
       return null;
     }
 
-    AndroidIdeInfo androidIdeInfo = ideInfo.getAndroidIdeInfo();
-    if (androidIdeInfo == null) {
-      return null;
-    }
-
-    ArtifactLocation renderResolveJar = androidIdeInfo.getRenderResolveJar();
-    if (renderResolveJar == null) {
-      return null;
-    }
-
     File renderResolveJarFile =
-        OutputArtifactResolver.resolve(
-            project, projectData.getArtifactLocationDecoder(), renderResolveJar);
+        RenderJarCache.getInstance(project)
+            .getCachedJarForBinaryTarget(projectData.getArtifactLocationDecoder(), ideInfo);
+
     if (renderResolveJarFile == null) {
-      log.warn(
-          String.format(
-              "Could not find render resolve jar for %s : %s",
-              binaryTarget.getLabel(), renderResolveJar));
       return null;
     }
 

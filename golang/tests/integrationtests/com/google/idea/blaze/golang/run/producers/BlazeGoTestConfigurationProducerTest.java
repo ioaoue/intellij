@@ -27,7 +27,7 @@ import com.google.idea.blaze.base.model.MockBlazeProjectDataManager;
 import com.google.idea.blaze.base.model.primitives.TargetExpression;
 import com.google.idea.blaze.base.model.primitives.WorkspacePath;
 import com.google.idea.blaze.base.run.BlazeCommandRunConfiguration;
-import com.google.idea.blaze.base.run.producer.BlazeRunConfigurationProducerTestCase;
+import com.google.idea.blaze.base.run.producers.BlazeRunConfigurationProducerTestCase;
 import com.google.idea.blaze.base.run.producers.TestContextRunConfigurationProducer;
 import com.google.idea.blaze.base.sync.data.BlazeProjectDataManager;
 import com.intellij.execution.actions.ConfigurationContext;
@@ -50,7 +50,7 @@ public class BlazeGoTestConfigurationProducerTest extends BlazeRunConfigurationP
   }
 
   @Test
-  public void testProducedFromGoFile() {
+  public void testProducedFromGoFile() throws Throwable {
     PsiFile goFile =
         createAndIndexFile(
             new WorkspacePath("foo/bar/foo_test.go"),
@@ -89,7 +89,7 @@ public class BlazeGoTestConfigurationProducerTest extends BlazeRunConfigurationP
   }
 
   @Test
-  public void testProducedFromTestCase() {
+  public void testProducedFromTestCase() throws Throwable {
     PsiFile goFile =
         createAndIndexFile(
             new WorkspacePath("foo/bar/foo_test.go"),

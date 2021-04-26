@@ -25,8 +25,8 @@ import com.google.idea.blaze.base.model.MockBlazeProjectDataManager;
 import com.google.idea.blaze.base.model.primitives.TargetExpression;
 import com.google.idea.blaze.base.model.primitives.WorkspacePath;
 import com.google.idea.blaze.base.run.BlazeCommandRunConfiguration;
-import com.google.idea.blaze.base.run.producer.BlazeRunConfigurationProducerTestCase;
 import com.google.idea.blaze.base.run.producers.BinaryContextRunConfigurationProducer;
+import com.google.idea.blaze.base.run.producers.BlazeRunConfigurationProducerTestCase;
 import com.google.idea.blaze.base.sync.data.BlazeProjectDataManager;
 import com.intellij.execution.actions.ConfigurationContext;
 import com.intellij.execution.actions.ConfigurationFromContext;
@@ -41,7 +41,7 @@ import org.junit.runners.JUnit4;
 public class PyBinaryContextProviderTest extends BlazeRunConfigurationProducerTestCase {
 
   @Test
-  public void testProducedFromPyFile() {
+  public void testProducedFromPyFile() throws Throwable {
     PsiFile pyFile =
         createAndIndexFile(
             new WorkspacePath("py/bin/main.py"),

@@ -25,7 +25,7 @@ import com.google.idea.blaze.base.model.MockBlazeProjectDataManager;
 import com.google.idea.blaze.base.model.primitives.TargetExpression;
 import com.google.idea.blaze.base.model.primitives.WorkspacePath;
 import com.google.idea.blaze.base.run.BlazeCommandRunConfiguration;
-import com.google.idea.blaze.base.run.producer.BlazeRunConfigurationProducerTestCase;
+import com.google.idea.blaze.base.run.producers.BlazeRunConfigurationProducerTestCase;
 import com.google.idea.blaze.base.run.producers.TestContextRunConfigurationProducer;
 import com.google.idea.blaze.base.sync.data.BlazeProjectDataManager;
 import com.intellij.execution.actions.ConfigurationContext;
@@ -44,7 +44,7 @@ public class BlazeScalaTestClassConfigurationProducerTest
     extends BlazeRunConfigurationProducerTestCase {
 
   @Test
-  public void testJunitTestProducedFromPsiClass() {
+  public void testJunitTestProducedFromPsiClass() throws Throwable {
     PsiFile file =
         createAndIndexFile(
             new WorkspacePath("scala/com/google/test/TestClass.scala"),
@@ -92,7 +92,7 @@ public class BlazeScalaTestClassConfigurationProducerTest
   }
 
   @Test
-  public void testScalaTestProducedFromPsiClass() {
+  public void testScalaTestProducedFromPsiClass() throws Throwable {
     PsiFile file =
         createAndIndexFile(
             WorkspacePath.createIfValid("scala/com/google/test/TestClass.scala"),

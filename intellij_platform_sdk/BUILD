@@ -194,13 +194,6 @@ config_setting(
 )
 
 config_setting(
-    name = "android-studio-4.1",
-    values = {
-        "define": "ij_product=android-studio-4.1",
-    },
-)
-
-config_setting(
     name = "android-studio-4.2",
     values = {
         "define": "ij_product=android-studio-4.2",
@@ -274,6 +267,21 @@ config_setting(
     },
 )
 
+config_setting(
+    name = "clion-2020.3",
+    values = {
+        "define": "ij_product=clion-2020.3",
+    },
+)
+
+config_setting(
+    name = "clion-2020.3-mac",
+    values = {
+        "cpu": "darwin_x86_64",
+        "define": "ij_product=clion-2020.3",
+    },
+)
+
 # The purpose of this rule is to hide the versioning
 # complexity from users of this api.
 # There will be additional versions added in the future
@@ -283,11 +291,20 @@ java_library(
     exports = select_from_plugin_api_directory(
         android_studio = [
             ":sdk",
-            ":android_plugin",
+            ":java",
+            ":android",
             ":test_recorder",
+            ":platform_images",
         ],
-        clion = [":sdk"],
-        intellij = [":sdk"],
+        clion = [
+            ":sdk",
+            ":clion_plugins",
+        ],
+        intellij = [
+            ":sdk",
+            ":java",
+            ":platform_images",
+        ],
     ),
 )
 
@@ -335,22 +352,11 @@ java_library(
     testonly = 1,
     visibility = [":test_libs_visibility"],
     exports = [
-        ":objenesis",
         "//third_party:truth",
         "@bytebuddy-agent//jar",
         "@bytebuddy//jar",
         "@mockito//jar",
     ],
-)
-
-# The UI designer requires forms_rt.jar in the classpath.
-java_library(
-    name = "forms_rt",
-    exports = select_from_plugin_api_directory(
-        android_studio = [":forms_rt"],
-        clion = [":forms_rt"],
-        intellij = [":forms_rt"],
-    ),
 )
 
 # The version of guava bundled with the IntelliJ plugin API.
@@ -381,18 +387,17 @@ java_library(
     exports = select_for_plugin_api({
         "clion-2020.1": [":bundled_jsr305"],
         "clion-2020.2": [":bundled_jsr305"],
+        "clion-2020.3": [":bundled_jsr305"],
         "intellij-2020.1": [":bundled_jsr305"],
         "intellij-2020.2": [":bundled_jsr305"],
         "intellij-2020.3": [":bundled_jsr305"],
         "intellij-ue-2020.1": ["@jsr305_annotations//jar"],
         "intellij-ue-2020.2": ["@jsr305_annotations//jar"],
         "intellij-ue-2020.3": [":bundled_jsr305"],
-        "android-studio-4.1": [":bundled_jsr305"],
         "android-studio-4.2": ["@jsr305_annotations//jar"],
         "android-studio-2020.3": ["@jsr305_annotations//jar"],
-        # Some test libraries depend on this, yet can be used without ij_product.
-        # Assume that if ij_product is missing, this dependency won't be used.
-        "default": [],
+        # We default to intellij-latest when no plugin api is selected.
+        "default": [":bundled_jsr305"],
     }),
 )
 
@@ -413,17 +418,6 @@ java_library(
     name = "truth",
     testonly = 1,
     exports = ["//third_party:truth"],
-)
-
-# The version of objenesis bundled with the IntelliJ plugin API
-java_library(
-    name = "objenesis",
-    neverlink = 1,
-    exports = select_from_plugin_api_directory(
-        android_studio = [":objenesis"],
-        clion = [":objenesis"],
-        intellij = [":objenesis"],
-    ),
 )
 
 # IntelliJ Coverage plugin

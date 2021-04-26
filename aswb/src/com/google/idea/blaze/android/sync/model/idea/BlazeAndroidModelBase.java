@@ -20,7 +20,7 @@ import com.android.tools.idea.model.AndroidModel;
 import com.android.tools.idea.model.ClassJarProvider;
 import com.android.tools.lint.detector.api.Desugaring;
 import com.google.common.collect.Sets;
-import com.google.idea.blaze.base.actions.BlazeBuildService;
+import com.google.idea.blaze.base.build.BlazeBuildService;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.module.Module;
@@ -97,12 +97,6 @@ abstract class BlazeAndroidModelBase implements AndroidModel {
   @Nullable
   @Override
   public AndroidVersion getTargetSdkVersion() {
-    return null;
-  }
-
-  @Nullable
-  @Override
-  public Integer getVersionCode() {
     return null;
   }
 

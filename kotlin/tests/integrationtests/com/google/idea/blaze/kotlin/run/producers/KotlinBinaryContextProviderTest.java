@@ -24,7 +24,7 @@ import com.google.idea.blaze.base.model.MockBlazeProjectDataBuilder;
 import com.google.idea.blaze.base.model.MockBlazeProjectDataManager;
 import com.google.idea.blaze.base.model.primitives.WorkspacePath;
 import com.google.idea.blaze.base.run.BlazeRunConfiguration;
-import com.google.idea.blaze.base.run.producer.BlazeRunConfigurationProducerTestCase;
+import com.google.idea.blaze.base.run.producers.BlazeRunConfigurationProducerTestCase;
 import com.google.idea.blaze.base.sync.data.BlazeProjectDataManager;
 import com.intellij.execution.configurations.RunConfiguration;
 import com.intellij.psi.PsiFile;
@@ -36,7 +36,7 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class KotlinBinaryContextProviderTest extends BlazeRunConfigurationProducerTestCase {
   @Test
-  public void testMainMethodIsRunnable() {
+  public void testMainMethodIsRunnable() throws Throwable {
     MockBlazeProjectDataBuilder builder = MockBlazeProjectDataBuilder.builder(workspaceRoot);
     builder.setTargetMap(
         TargetMapBuilder.builder()
@@ -69,7 +69,7 @@ public class KotlinBinaryContextProviderTest extends BlazeRunConfigurationProduc
   }
 
   @Test
-  public void testMainClassInterpretedCorrectly() {
+  public void testMainClassInterpretedCorrectly() throws Throwable {
     MockBlazeProjectDataBuilder builder = MockBlazeProjectDataBuilder.builder(workspaceRoot);
     builder.setTargetMap(
         TargetMapBuilder.builder()

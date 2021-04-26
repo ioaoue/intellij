@@ -1,5 +1,6 @@
 workspace(name = "intellij_with_bazel")
 
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:jvm.bzl", "jvm_maven_import_external")
 
@@ -28,8 +29,8 @@ http_archive(
 http_archive(
     name = "intellij_ce_2020_3",
     build_file = "@//intellij_platform_sdk:BUILD.idea203",
-    sha256 = "2c621e40a8a965c7ea5e1005652d1d1dd80b8fe4241be13ef3d4df2c0b2d72c5",
-    url = "https://www.jetbrains.com/intellij-repository/releases/com/jetbrains/intellij/idea/ideaIC/2020.3.1/ideaIC-2020.3.1.zip",
+    sha256 = "fce0df34d30c8495667ab2c2df0dbb374caeb0707e5efd7fc3dcf27f1c54902d",
+    url = "https://www.jetbrains.com/intellij-repository/releases/com/jetbrains/intellij/idea/ideaIC/2020.3.3/ideaIC-2020.3.3.zip",
 )
 
 # The plugin api for IntelliJ UE 2020.1. This is required to run UE-specific
@@ -55,8 +56,8 @@ http_archive(
 http_archive(
     name = "intellij_ue_2020_3",
     build_file = "@//intellij_platform_sdk:BUILD.ue203",
-    sha256 = "ffd4e98b7a3e7cd40a66e518b01e1fb160fe03071aa6085a543decd7b825b4c3",
-    url = "https://www.jetbrains.com/intellij-repository/releases/com/jetbrains/intellij/idea/ideaIU/2020.3.1/ideaIU-2020.3.1.zip",
+    sha256 = "330aa9a89e2277de52d02c1c18696ff5137bd9ee5a47706562199aa3be02eeac",
+    url = "https://www.jetbrains.com/intellij-repository/releases/com/jetbrains/intellij/idea/ideaIU/2020.3.3/ideaIU-2020.3.3.zip",
 )
 
 # The plugin api for CLion 2020.1. This is required to build CLwB,
@@ -77,16 +78,27 @@ http_archive(
     url = "https://download.jetbrains.com/cpp/CLion-2020.2.5.tar.gz",
 )
 
+# The plugin api for CLion 2020.3. This is required to build CLwB,
+# and run integration tests.
+http_archive(
+    name = "clion_2020_3",
+    build_file = "@//intellij_platform_sdk:BUILD.clion203",
+    sha256 = "5d49bd88b6457271464687453ff65880a4a38974575bb76f969036c692072280",
+    url = "https://download.jetbrains.com/cpp/CLion-2020.3.2.tar.gz",
+)
+
+_PYTHON_CE_BUILD_FILE = """
+java_import(
+    name = "python",
+    jars = ["python-ce/lib/python-ce.jar"],
+    visibility = ["//visibility:public"],
+)
+"""
+
 # Python plugin for IntelliJ CE. Required at compile-time for python-specific features.
 http_archive(
     name = "python_2020_1",
-    build_file_content = "\n".join([
-        "java_import(",
-        "    name = 'python',",
-        "    jars = ['python-ce/lib/python-ce.jar'],",
-        "    visibility = ['//visibility:public'],",
-        ")",
-    ]),
+    build_file_content = _PYTHON_CE_BUILD_FILE,
     sha256 = "648438d26e85072f90a62f9f5b9f9b983a49f3cb752e87d01f915cb6a03644b9",
     url = "https://plugins.jetbrains.com/files/7322/88054/python-ce-201.7846.93.zip",
 )
@@ -94,13 +106,7 @@ http_archive(
 # Python plugin for IntelliJ CE. Required at compile-time for python-specific features.
 http_archive(
     name = "python_2020_2",
-    build_file_content = "\n".join([
-        "java_import(",
-        "    name = 'python',",
-        "    jars = ['python-ce/lib/python-ce.jar'],",
-        "    visibility = ['//visibility:public'],",
-        ")",
-    ]),
+    build_file_content = _PYTHON_CE_BUILD_FILE,
     sha256 = "6712a9726e9b37ebe39c7b62d2a0835b97f1a366a1d8fcfbd5e81fd6bd414d9e",
     url = "https://plugins.jetbrains.com/files/7322/97141/python-ce-202.7319.64.zip",
 )
@@ -108,27 +114,31 @@ http_archive(
 # Python plugin for IntelliJ CE. Required at compile-time for python-specific features.
 http_archive(
     name = "python_2020_3",
-    build_file_content = "\n".join([
-        "java_import(",
-        "    name = 'python',",
-        "    jars = ['python-ce/lib/python-ce.jar'],",
-        "    visibility = ['//visibility:public'],",
-        ")",
-    ]),
-    sha256 = "510303a863ea138554777d18968accdd1320aa41e63e62170012b9b6566b4a7e",
-    url = "https://plugins.jetbrains.com/files/7322/106700/python-ce-203.6682.179.zip",
+    build_file_content = _PYTHON_CE_BUILD_FILE,
+    sha256 = "722fb54b503de61989d65bc544f25f03891614467e62f4faef677cefbcd51340",
+    url = "https://plugins.jetbrains.com/files/7322/114033/python-ce-203.7717.65.zip",
 )
+
+_GO_201_BUILD_FILE = """
+java_import(
+    name = "go",
+    jars = glob(["intellij-go/lib/*.jar"]),
+    visibility = ["//visibility:public"],
+)
+"""
+
+_GO_BUILD_FILE = """
+java_import(
+    name = "go",
+    jars = glob(["go/lib/*.jar"]),
+    visibility = ["//visibility:public"],
+)
+"""
 
 # Go plugin for IntelliJ UE. Required at compile-time for Bazel integration.
 http_archive(
     name = "go_2020_1",
-    build_file_content = "\n".join([
-        "java_import(",
-        "    name = 'go',",
-        "    jars = glob(['intellij-go/lib/*.jar']),",
-        "    visibility = ['//visibility:public'],",
-        ")",
-    ]),
+    build_file_content = _GO_201_BUILD_FILE,
     sha256 = "1f7c47c2a3f6799f921d077da1d056414c9f67bea568a2053dd0dbdc526933a3",
     url = "https://plugins.jetbrains.com/files/9568/87978/intellij-go-201.7846.76.189.zip",
 )
@@ -136,13 +146,7 @@ http_archive(
 # Go plugin for IntelliJ UE. Required at compile-time for Bazel integration.
 http_archive(
     name = "go_2020_2",
-    build_file_content = "\n".join([
-        "java_import(",
-        "    name = 'go',",
-        "    jars = glob(['go/lib/*.jar']),",
-        "    visibility = ['//visibility:public'],",
-        ")",
-    ]),
+    build_file_content = _GO_BUILD_FILE,
     sha256 = "4df0c9ddd51f08176a4b37194ecce1c1b37a3d9bbd484b3129a754a22c7dc79d",
     url = "https://plugins.jetbrains.com/files/9568/97011/go-202.7319.50.zip",
 )
@@ -150,27 +154,23 @@ http_archive(
 # Go plugin for IntelliJ UE. Required at compile-time for Bazel integration.
 http_archive(
     name = "go_2020_3",
-    build_file_content = "\n".join([
-        "java_import(",
-        "    name = 'go',",
-        "    jars = glob(['go/lib/*.jar']),",
-        "    visibility = ['//visibility:public'],",
-        ")",
-    ]),
-    sha256 = "4570ea6145590d92fa984e7ae5e7e75a0dc948dc2866e227f22986abed5527a3",
-    url = "https://plugins.jetbrains.com/files/9568/106609/go-203.6682.168.zip",
+    build_file_content = _GO_BUILD_FILE,
+    sha256 = "996231c0bdeedfe4ea2ae66f72e9687818004fc363a415f814cb58f4563579c3",
+    url = "https://plugins.jetbrains.com/files/9568/112071/go-203.7717.11.zip",
 )
+
+_SCALA_BUILD_FILE = """
+java_import(
+    name = "scala",
+    jars = glob(["Scala/lib/*.jar"]),
+    visibility = ["//visibility:public"],
+)
+"""
 
 # Scala plugin for IntelliJ CE. Required at compile-time for scala-specific features.
 http_archive(
     name = "scala_2020_1",
-    build_file_content = "\n".join([
-        "java_import(",
-        "    name = 'scala',",
-        "    jars = glob(['Scala/lib/*.jar']),",
-        "    visibility = ['//visibility:public'],",
-        ")",
-    ]),
+    build_file_content = _SCALA_BUILD_FILE,
     sha256 = "626b9c9bc2f90d64498524bd7138558edacf50bbc72a02f882401118a1fc1403",
     url = "https://plugins.jetbrains.com/files/1347/76628/scala-intellij-bin-2020.1.7.zip",
 )
@@ -178,13 +178,7 @@ http_archive(
 # Scala plugin for IntelliJ CE. Required at compile-time for scala-specific features.
 http_archive(
     name = "scala_2020_2",
-    build_file_content = "\n".join([
-        "java_import(",
-        "    name = 'scala',",
-        "    jars = glob(['Scala/lib/*.jar']),",
-        "    visibility = ['//visibility:public'],",
-        ")",
-    ]),
+    build_file_content = _SCALA_BUILD_FILE,
     sha256 = "6c29fe5cf0ea2b242adfa2265c8c6e409358640302b6666afc8e023eca237010",
     url = "https://plugins.jetbrains.com/files/1347/97067/scala-intellij-bin-2020.2.27.zip",
 )
@@ -192,24 +186,9 @@ http_archive(
 # Scala plugin for IntelliJ CE. Required at compile-time for scala-specific features.
 http_archive(
     name = "scala_2020_3",
-    build_file_content = "\n".join([
-        "java_import(",
-        "    name = 'scala',",
-        "    jars = glob(['Scala/lib/*.jar']),",
-        "    visibility = ['//visibility:public'],",
-        ")",
-    ]),
-    sha256 = "f20594572b6468c37fd0f725f6169741e065839dfc750c6d19ec99a8940e7f01",
-    url = "https://plugins.jetbrains.com/files/1347/105697/scala-intellij-bin-2020.3.18.zip",
-)
-
-# The plugin api for Android Studio 4.1. This is required to build ASwB,
-# and run integration tests.
-http_archive(
-    name = "android_studio_4_1",
-    build_file = "@//intellij_platform_sdk:BUILD.android_studio41",
-    sha256 = "68032184959c54576f119b7c7c8ded175d848374f3954fa450530d78260dd68b",
-    url = "https://dl.google.com/dl/android/studio/ide-zips/4.1.1.0/android-studio-ide-201.6953283-linux.tar.gz",
+    build_file_content = _SCALA_BUILD_FILE,
+    sha256 = "d6411ae778eea6b04d8e27365925448851dc83852a9ed52317094d3442c84d7e",
+    url = "https://plugins.jetbrains.com/files/1347/113954/scala-intellij-bin-2020.3.23.zip",
 )
 
 # The plugin api for Android Studio 4.2. This is required to build ASwB,
@@ -217,8 +196,8 @@ http_archive(
 http_archive(
     name = "android_studio_4_2",
     build_file = "@//intellij_platform_sdk:BUILD.android_studio42",
-    sha256 = "3f322d40ad5c0cb8644627320c4c3d817f4ba1cf7740a411d2efa566b0c38481",
-    url = "https://dl.google.com/dl/android/studio/ide-zips/4.2.0.20/android-studio-ide-202.7094744-linux.tar.gz",
+    sha256 = "2ac04177a96161b2ece526404ee40f12aa3afba49c580ca92b257c6b84f7dd69",
+    url = "https://dl.google.com/dl/android/studio/ide-zips/4.2.0.23/android-studio-ide-202.7231092-linux.tar.gz",
 )
 
 # The plugin api for Android Studio 2020.3. This is required to build ASwB,
@@ -226,8 +205,8 @@ http_archive(
 http_archive(
     name = "android_studio_2020_3",
     build_file = "@//intellij_platform_sdk:BUILD.android_studio203",
-    sha256 = "64eae480f415cad604e37d50154e4f8cedba0d13ee6a5b1e3e63019c1f81b915",
-    url = "https://dl.google.com/dl/android/studio/ide-zips/2020.3.1.4/android-studio-2020.3.1.4-linux.tar.gz",
+    sha256 = "740d2e2275738b9c6de62c6cb2a8294a0fab3f1b2f97769cee9e39afb02203a9",
+    url = "https://dl.google.com/dl/android/studio/ide-zips/2020.3.1.14/android-studio-2020.3.1.14-linux.tar.gz",
 )
 
 # LICENSE: Common Public License 1.0
@@ -288,34 +267,6 @@ jvm_maven_import_external(
 )
 
 jvm_maven_import_external(
-    name = "jarjar",
-    artifact = "org.pantsbuild:jarjar:1.7.2",
-    artifact_sha256 = "0706a455e17b67718abe212e3a77688bbe8260852fc74e3e836d9f2e76d91c27",
-    licenses = ["notice"],  # Apache 2.0
-    server_urls = ["https://repo1.maven.org/maven2"],
-    deps = [
-        "@asm",
-        "@asm-commons",
-    ],
-)
-
-jvm_maven_import_external(
-    name = "asm",
-    artifact = "org.ow2.asm:asm:7.0",
-    artifact_sha256 = "b88ef66468b3c978ad0c97fd6e90979e56155b4ac69089ba7a44e9aa7ffe9acf",
-    licenses = ["notice"],  # Apache 2.0
-    server_urls = ["https://repo1.maven.org/maven2"],
-)
-
-jvm_maven_import_external(
-    name = "asm-commons",
-    artifact = "org.ow2.asm:asm-commons:7.0",
-    artifact_sha256 = "fed348ef05958e3e846a3ac074a12af5f7936ef3d21ce44a62c4fa08a771927d",
-    licenses = ["notice"],  # Apache 2.0
-    server_urls = ["https://repo1.maven.org/maven2"],
-)
-
-jvm_maven_import_external(
     name = "auto_value",
     artifact = "com.google.auto.value:auto-value:1.6.2",
     artifact_sha256 = "edbe65a5c53e3d4f5cb10b055d4884ae7705a7cd697be4b2a5d8427761b8ba12",
@@ -339,11 +290,55 @@ jvm_maven_import_external(
     server_urls = ["https://repo1.maven.org/maven2"],
 )
 
+_JARJAR_BUILD_FILE = """
+java_binary(
+    name = "jarjar_bin",
+    srcs = glob(
+        ["src/main/**/*.java"],
+        exclude = [
+            "src/main/com/tonicsystems/jarjar/JarJarMojo.java",
+            "src/main/com/tonicsystems/jarjar/util/AntJarProcessor.java",
+            "src/main/com/tonicsystems/jarjar/JarJarTask.java",
+        ],
+    ),
+    main_class = "com.tonicsystems.jarjar.Main",
+    resources = [":help"],
+    use_launcher = False,
+    visibility = ["//visibility:public"],
+    deps = [":asm"],
+)
+
+java_import(
+    name = "asm",
+    jars = glob(["lib/asm-*.jar"]),
+)
+
+genrule(
+    name = "help",
+    srcs = ["src/main/com/tonicsystems/jarjar/help.txt"],
+    outs = ["com/tonicsystems/jarjar/help.txt"],
+    cmd = "cp $< $@",
+)
+"""
+
+new_git_repository(
+    name = "jarjar",
+    build_file_content = _JARJAR_BUILD_FILE,
+    commit = "38ff702d10baec78f30d5f57485ae452f0fe33b5",
+    remote = "https://github.com/google/jarjar",
+    shallow_since = "1518210648 -0800",
+)
+
 http_archive(
     name = "bazel_skylib",
     sha256 = "2ef429f5d7ce7111263289644d233707dba35e39696377ebab8b0bc701f7818e",
     url = "https://github.com/bazelbuild/bazel-skylib/releases/download/0.8.0/bazel-skylib.0.8.0.tar.gz",
 )
+
+# specify a minimum version for bazel otherwise users on old versions may see
+# unexpressive errors when new features are used
+load("@bazel_skylib//lib:versions.bzl", "versions")
+versions.check(minimum_bazel_version = "4.0.0")
 
 http_archive(
     name = "build_bazel_integration_testing",
@@ -382,11 +377,11 @@ bazel_external_dependency_archive(
 # LICENSE: The Apache Software License, Version 2.0
 http_archive(
     name = "rules_proto",
-    sha256 = "4d421d51f9ecfe9bf96ab23b55c6f2b809cbaf0eea24952683e397decfbd0dd0",
-    strip_prefix = "rules_proto-f6b8d89b90a7956f6782a4a3609b2f0eee3ce965",
+    sha256 = "aa1ee19226f707d44bee44c720915199c20c84a23318bb0597ed4e5c873ccbd5",
+    strip_prefix = "rules_proto-40298556293ae502c66579620a7ce867d5f57311",
     urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/rules_proto/archive/f6b8d89b90a7956f6782a4a3609b2f0eee3ce965.tar.gz",
-        "https://github.com/bazelbuild/rules_proto/archive/f6b8d89b90a7956f6782a4a3609b2f0eee3ce965.tar.gz",
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_proto/archive/40298556293ae502c66579620a7ce867d5f57311.tar.gz",
+        "https://github.com/bazelbuild/rules_proto/archive/40298556293ae502c66579620a7ce867d5f57311.tar.gz",
     ],
 )
 

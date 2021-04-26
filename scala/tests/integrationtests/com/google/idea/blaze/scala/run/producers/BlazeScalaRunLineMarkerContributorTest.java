@@ -20,7 +20,7 @@ import static com.google.common.truth.Truth.assertThat;
 import com.google.common.base.Objects;
 import com.google.idea.blaze.base.lang.buildfile.psi.util.PsiUtils;
 import com.google.idea.blaze.base.model.primitives.WorkspacePath;
-import com.google.idea.blaze.base.run.producer.BlazeRunConfigurationProducerTestCase;
+import com.google.idea.blaze.base.run.producers.BlazeRunConfigurationProducerTestCase;
 import com.intellij.execution.lineMarker.RunLineMarkerContributor.Info;
 import com.intellij.icons.AllIcons;
 import com.intellij.psi.PsiFile;
@@ -36,7 +36,7 @@ import org.junit.runners.JUnit4;
 public class BlazeScalaRunLineMarkerContributorTest extends BlazeRunConfigurationProducerTestCase {
 
   @Test
-  public void testGetMainInfo() {
+  public void testGetMainInfo() throws Throwable {
     BlazeScalaRunLineMarkerContributor markerContributor = new BlazeScalaRunLineMarkerContributor();
     ScalaRunLineMarkerContributor replacedContributor = new ScalaRunLineMarkerContributor();
 
@@ -54,8 +54,7 @@ public class BlazeScalaRunLineMarkerContributorTest extends BlazeRunConfiguratio
     List<LeafPsiElement> elements =
         PsiUtils.findAllChildrenOfClassRecursive(scalaFile, LeafPsiElement.class);
     LeafPsiElement objectIdentifier =
-        elements
-            .stream()
+        elements.stream()
             .filter(e -> Objects.equal(e.getText(), "MainClass"))
             .findFirst()
             .orElse(null);
@@ -68,7 +67,6 @@ public class BlazeScalaRunLineMarkerContributorTest extends BlazeRunConfiguratio
     Info objectInfo = markerContributor.getInfo(objectIdentifier);
     assertThat(objectInfo).isNotNull();
     assertThat(objectInfo.icon).isEqualTo(AllIcons.RunConfigurations.TestState.Run);
-
 
     // Main object info replaces the one from the scala plugin
     Info replacedObjectInfo = replacedContributor.getInfo(objectIdentifier);
@@ -86,8 +84,7 @@ public class BlazeScalaRunLineMarkerContributorTest extends BlazeRunConfiguratio
     assertThat(methodInfo.shouldReplace(replacedMethodInfo)).isTrue();
 
     // No other element should get an info
-    elements
-        .stream()
+    elements.stream()
         .filter(e -> !Objects.equal(e, objectIdentifier) && !Objects.equal(e, methodIdentifier))
         .forEach(e -> assertThat(markerContributor.getInfo(e)).isNull());
   }

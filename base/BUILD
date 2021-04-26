@@ -9,7 +9,6 @@ load(
     "intellij_integration_test_suite",
     "intellij_unit_test_suite",
 )
-load("//intellij_platform_sdk:build_defs.bzl", "select_for_plugin_api")
 
 licenses(["notice"])  # Apache 2.0
 
@@ -23,6 +22,7 @@ java_library(
         "//common/actions",
         "//common/experiments",
         "//common/settings",
+        "//common/ui/properties",
         "//common/util:binaryhelper",
         "//common/util:concurrency",
         "//common/util:platform",
@@ -38,20 +38,7 @@ java_library(
 
 intellij_plugin_library(
     name = "plugin_library",
-    plugin_xmls = ["src/META-INF/blaze-base.xml"] + select_for_plugin_api({
-        # #api193 Remove compat directory now that all versions need this.
-        "android-studio-4.1": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
-        "android-studio-4.2": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
-        "android-studio-2020.3": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
-        "intellij-2020.1": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
-        "intellij-ue-2020.1": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
-        "intellij-2020.2": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
-        "intellij-ue-2020.2": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
-        "intellij-2020.3": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
-        "intellij-ue-2020.3": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
-        "clion-2020.1": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
-        "clion-2020.2": ["sdkcompat/v201/META-INF/blaze-base-v201.xml"],
-    }),
+    plugin_xmls = ["src/META-INF/blaze-base.xml"],
     visibility = ["//visibility:public"],
     deps = [":base"],
 )
@@ -272,6 +259,7 @@ java_library(
 java_library(
     name = "build_batching_service_api",
     srcs = [
+        "src/com/google/idea/blaze/base/logging/utils/ShardStats.java",
         "src/com/google/idea/blaze/base/settings/BuildBinaryType.java",
         "src/com/google/idea/blaze/base/sync/sharding/BuildBatchingService.java",
     ],
@@ -280,9 +268,10 @@ java_library(
         ":label_api",
     ],
     deps = [
-        ":label_api",
+        ":base",
         "//intellij_platform_sdk:jsr305",
         "//intellij_platform_sdk:plugin_api",
+        "//third_party/auto_value",
     ],
 )
 
@@ -319,6 +308,18 @@ java_library(
         "//intellij_platform_sdk:jsr305",
         "//intellij_platform_sdk:plugin_api",
         "//proto:proto_deps",
+    ],
+)
+
+java_library(
+    name = "file_size_scanner",
+    srcs = [
+        "src/com/google/idea/blaze/base/io/FileSizeScanner.java",
+    ],
+    neverlink = 1,
+    deps = [
+        ":base",
+        "//intellij_platform_sdk:plugin_api",
     ],
 )
 
@@ -396,11 +397,9 @@ intellij_unit_test_suite(
         ":unit_test_utils",
         "//common/experiments",
         "//common/experiments:unit_test_utils",
-        "//intellij_platform_sdk:jsr305",
         "//intellij_platform_sdk:plugin_api_for_tests",
         "//intellij_platform_sdk:test_libs",
         "//proto:proto_deps",
-        "//sdkcompat",
         "//testing:lib",
         "@junit//jar",
     ],

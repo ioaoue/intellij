@@ -19,11 +19,14 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Streams;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.idea.blaze.base.async.FutureUtil;
+import com.google.idea.blaze.base.logging.utils.ShardStats;
+import com.google.idea.blaze.base.logging.utils.ShardStats.ShardingApproach;
 import com.google.idea.blaze.base.model.primitives.TargetExpression;
 import com.google.idea.blaze.base.scope.BlazeContext;
 import com.google.idea.blaze.base.scope.output.IssueOutput;
@@ -34,19 +37,39 @@ import com.google.idea.common.experiments.IntExperiment;
 import com.intellij.openapi.project.Project;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import java.util.List;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 /** Partitioned list of blaze targets. */
 public class ShardedTargetList {
 
-  /** Executor used to run multiple */
-  private static final IntExperiment remoteConcurrentSyncs =
+  /** Number of concurrent syncs which can be run in parallel remotely. */
+  public static final IntExperiment remoteConcurrentSyncs =
       new IntExperiment("number.concurrent.remote.syncs", 10);
 
-  @VisibleForTesting final ImmutableList<ImmutableList<TargetExpression>> shardedTargets;
+  @VisibleForTesting
+  final ImmutableList<? extends ImmutableList<? extends TargetExpression>> shardedTargets;
 
-  public ShardedTargetList(ImmutableList<ImmutableList<TargetExpression>> shardedTargets) {
+  final ShardStats shardStats;
+
+  public ShardedTargetList(
+      ImmutableList<? extends ImmutableList<? extends TargetExpression>> shardedTargets,
+      ShardingApproach shardingApproach,
+      int suggestedSize) {
     this.shardedTargets = shardedTargets;
+    this.shardStats = calculateShardStats(shardingApproach, suggestedSize, shardedTargets);
+  }
+
+  private static ShardStats calculateShardStats(
+      ShardingApproach shardingApproach,
+      int suggestedSize,
+      ImmutableList<? extends ImmutableList<? extends TargetExpression>> shardedTargets) {
+    return ShardStats.builder()
+        .setShardingApproach(shardingApproach)
+        .setSuggestedTargetSizePerShard(suggestedSize)
+        .setActualTargetSizePerShard(
+            shardedTargets.stream().map(List::size).collect(toImmutableList()))
+        .build();
   }
 
   public boolean isEmpty() {
@@ -55,6 +78,10 @@ public class ShardedTargetList {
 
   public int shardCount() {
     return shardedTargets.size();
+  }
+
+  public ShardStats shardStats() {
+    return shardStats;
   }
 
   /**
@@ -66,13 +93,13 @@ public class ShardedTargetList {
       Project project,
       BlazeContext context,
       Function<Integer, String> progressMessage,
-      Function<List<TargetExpression>, BuildResult> invocation,
+      BiFunction<List<? extends TargetExpression>, Integer, BuildResult> invocation,
       boolean parallelize) {
     if (isEmpty()) {
       return BuildResult.SUCCESS;
     }
     if (shardedTargets.size() == 1) {
-      return invocation.apply(shardedTargets.get(0));
+      return invocation.apply(shardedTargets.get(0), 1);
     }
     if (parallelize) {
       return runInParallel(project, context, invocation);
@@ -81,12 +108,12 @@ public class ShardedTargetList {
     BuildResult output = null;
     for (int i = 0; i < shardedTargets.size(); i++, progress++) {
       context.output(new StatusOutput(progressMessage.apply(i + 1)));
-      BuildResult result = invocation.apply(shardedTargets.get(i));
+      BuildResult result = invocation.apply(shardedTargets.get(i), i + 1);
       if (result.outOfMemory() && progress > 0) {
         // re-try now that blaze server has restarted
         progress = 0;
         IssueOutput.warn(retryOnOomMessage(project, i)).submit(context);
-        result = invocation.apply(shardedTargets.get(i));
+        result = invocation.apply(shardedTargets.get(i), i + 1);
       }
       output = output == null ? result : BuildResult.combine(output, result);
       if (output.status == BuildResult.Status.FATAL_ERROR) {
@@ -99,7 +126,7 @@ public class ShardedTargetList {
   private BuildResult runInParallel(
       Project project,
       BlazeContext context,
-      Function<List<TargetExpression>, BuildResult> invocation) {
+      BiFunction<List<? extends TargetExpression>, Integer, BuildResult> invocation) {
     // new executor for each sync, so we get an up-to-date experiment value. This is fine, because
     // it's just a view of the single application pool executor. Doesn't need to be shutdown for the
     // same reason
@@ -110,8 +137,9 @@ public class ShardedTargetList {
 
     ListenableFuture<List<BuildResult>> future =
         Futures.allAsList(
-            shardedTargets.stream()
-                .map(s -> executor.submit(() -> invocation.apply(s)))
+            Streams.mapWithIndex(
+                    shardedTargets.stream(),
+                    (s, i) -> executor.submit(() -> invocation.apply(s, (int) i + 1)))
                 .collect(toImmutableList()));
 
     String buildSystem = Blaze.buildSystemName(project);

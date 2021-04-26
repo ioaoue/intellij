@@ -25,7 +25,7 @@ import com.google.idea.blaze.base.model.MockBlazeProjectDataManager;
 import com.google.idea.blaze.base.model.primitives.TargetExpression;
 import com.google.idea.blaze.base.model.primitives.WorkspacePath;
 import com.google.idea.blaze.base.run.BlazeCommandRunConfiguration;
-import com.google.idea.blaze.base.run.producer.BlazeRunConfigurationProducerTestCase;
+import com.google.idea.blaze.base.run.producers.BlazeRunConfigurationProducerTestCase;
 import com.google.idea.blaze.base.run.producers.TestContextRunConfigurationProducer;
 import com.google.idea.blaze.base.sync.data.BlazeProjectDataManager;
 import com.google.idea.blaze.base.sync.projectview.WorkspaceFileFinder;
@@ -106,7 +106,7 @@ public class MultipleJavaClassesTestContextProviderTest
   }
 
   @Test
-  public void testProducedFromDirectory() throws Exception {
+  public void testProducedFromDirectory() throws Throwable {
     MockBlazeProjectDataBuilder builder = MockBlazeProjectDataBuilder.builder(workspaceRoot);
     builder.setTargetMap(
         TargetMapBuilder.builder()
@@ -149,7 +149,7 @@ public class MultipleJavaClassesTestContextProviderTest
   }
 
   @Test
-  public void testProducedFromDirectoryWithNestedTests() throws Exception {
+  public void testProducedFromDirectoryWithNestedTests() throws Throwable {
     MockBlazeProjectDataBuilder builder = MockBlazeProjectDataBuilder.builder(workspaceRoot);
     builder.setTargetMap(
         TargetMapBuilder.builder()
@@ -192,7 +192,7 @@ public class MultipleJavaClassesTestContextProviderTest
   }
 
   @Test
-  public void testNotProducedForDirectoryNotUnderTestRoots() {
+  public void testNotProducedForDirectoryNotUnderTestRoots() throws Throwable {
     MockBlazeProjectDataBuilder builder = MockBlazeProjectDataBuilder.builder(workspaceRoot);
     builder.setTargetMap(
         TargetMapBuilder.builder()
@@ -217,8 +217,16 @@ public class MultipleJavaClassesTestContextProviderTest
         "}");
 
     ConfigurationContext context = createContextFromPsi(directory);
-    assertThat(new TestContextRunConfigurationProducer().createConfigurationFromContext(context))
-        .isNull();
+    ConfigurationFromContext fromContext =
+        new TestContextRunConfigurationProducer().createConfigurationFromContext(context);
+    assertThat(fromContext).isNotNull();
+    assertThat(fromContext.getConfiguration()).isInstanceOf(BlazeCommandRunConfiguration.class);
+
+    BlazeCommandRunConfiguration config =
+        (BlazeCommandRunConfiguration) fromContext.getConfiguration();
+    assertThat(config.getTargets())
+        .containsExactly(TargetExpression.fromStringSafe("//java/...:all"));
+    assertThat(getTestFilterContents(config)).isNull();
   }
 
   @Test
@@ -239,12 +247,21 @@ public class MultipleJavaClassesTestContextProviderTest
     PsiDirectory directory = workspace.createPsiDirectory(new WorkspacePath("java/com/other"));
 
     ConfigurationContext context = createContextFromPsi(directory);
-    assertThat(new TestContextRunConfigurationProducer().createConfigurationFromContext(context))
-        .isNull();
+    ConfigurationFromContext fromContext =
+        new TestContextRunConfigurationProducer().createConfigurationFromContext(context);
+    assertThat(fromContext).isNotNull();
+    assertThat(fromContext.getConfiguration()).isInstanceOf(BlazeCommandRunConfiguration.class);
+
+    BlazeCommandRunConfiguration config =
+        (BlazeCommandRunConfiguration) fromContext.getConfiguration();
+    assertThat(config.getTargets())
+        .containsExactly(TargetExpression.fromStringSafe("//java/com/other/...:all"));
+    assertThat(getTestFilterContents(config)).isNull();
   }
 
   @Test
-  public void testProducedFromTestFiles() {
+  public void testProducedFromTestFiles() throws Throwable {
+    // GIVEN two test classes
     MockBlazeProjectDataBuilder builder = MockBlazeProjectDataBuilder.builder(workspaceRoot);
     builder.setTargetMap(
         TargetMapBuilder.builder()
@@ -279,6 +296,7 @@ public class MultipleJavaClassesTestContextProviderTest
             "  public void testMethod() {}",
             "}");
 
+    // WHEN generating a BlazeCommandRunConfiguration
     ConfigurationContext context =
         createContextFromMultipleElements(new PsiElement[] {testClass1, testClass2});
     ConfigurationFromContext fromContext =
@@ -288,6 +306,8 @@ public class MultipleJavaClassesTestContextProviderTest
 
     BlazeCommandRunConfiguration config =
         (BlazeCommandRunConfiguration) fromContext.getConfiguration();
+
+    // THEN expect config to be correct
     assertThat(config.getTargets())
         .containsExactly(TargetExpression.fromStringSafe("//java/com/google/test:allTests"));
     assertThat(getTestFilterContents(config))
@@ -297,7 +317,7 @@ public class MultipleJavaClassesTestContextProviderTest
   }
 
   @Test
-  public void testNotProducedFromTestFilesInDifferentTestTargets() {
+  public void testNotProducedFromTestFilesInDifferentTestTargets() throws Throwable {
     MockBlazeProjectDataBuilder builder = MockBlazeProjectDataBuilder.builder(workspaceRoot);
     builder.setTargetMap(
         TargetMapBuilder.builder()
@@ -347,7 +367,7 @@ public class MultipleJavaClassesTestContextProviderTest
   }
 
   @Test
-  public void testNotProducedFromNonTestFiles() {
+  public void testNotProducedFromNonTestFiles() throws Throwable {
     MockBlazeProjectDataBuilder builder = MockBlazeProjectDataBuilder.builder(workspaceRoot);
     builder.setTargetMap(
         TargetMapBuilder.builder()

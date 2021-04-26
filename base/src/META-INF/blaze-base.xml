@@ -179,11 +179,13 @@
         factoryClass="com.google.idea.blaze.base.toolwindow.TasksToolWindowFactory"/>
     <projectService serviceImplementation="com.google.idea.blaze.base.console.BlazeConsoleView"/>
     <fileTypeFactory implementation="com.google.idea.blaze.base.plugin.BlazeFileTypeFactory" />
+    <projectService serviceImplementation="com.google.idea.blaze.base.ui.problems.BuildTasksProblemsView"/>
 
     <applicationConfigurable instance="com.google.idea.blaze.base.settings.ui.BlazeUserSettingsCompositeConfigurable"
                          id ="blaze.view" />
     <search.optionContributor implementation="com.google.idea.blaze.base.settings.ui.BlazeUserSettingsCompositeConfigurable$BlazeUserSettingsSearchableOptionContributor"/>
 
+    <projectService serviceImplementation="com.google.idea.blaze.base.build.BlazeBuildService"/>
     <projectService serviceInterface="com.google.idea.blaze.base.sync.data.BlazeProjectDataManager"
                     serviceImplementation="com.google.idea.blaze.base.sync.data.BlazeProjectDataManagerImpl"/>
     <projectService serviceImplementation="com.google.idea.blaze.base.sync.BlazeSyncManager"/>
@@ -272,7 +274,6 @@
     <stepsBeforeRunProvider implementation="com.google.idea.blaze.base.run.BlazeBeforeRunTaskProvider"/>
     <applicationService serviceInterface="com.google.idea.blaze.base.help.BlazeHelpHandler"
                         serviceImplementation="com.google.idea.blaze.base.help.BlazeHelpHandlerImpl"/>
-    <applicationService serviceImplementation="com.google.idea.blaze.base.actions.BlazeBuildService"/>
     <applicationService serviceInterface="com.google.idea.blaze.base.async.process.ExternalTaskProvider"
                         serviceImplementation="com.google.idea.blaze.base.async.process.ExternalTaskProvider$Impl"/>
 
@@ -327,7 +328,6 @@
     <readWriteAccessDetector implementation="com.google.idea.blaze.base.lang.buildfile.findusages.BuildReadWriteAccessDetector"/>
     <elementDescriptionProvider implementation="com.google.idea.blaze.base.lang.buildfile.findusages.BuildElementDescriptionProvider"/>
     <usageGroupingRuleProvider implementation="com.google.idea.blaze.base.lang.buildfile.findusages.UsageGroupingRuleProviderOverride" order="first"/>
-    <useScopeOptimizer implementation="com.google.idea.blaze.base.lang.buildfile.search.ExcludeBuildFilesScope"/>
     <targetElementEvaluator language="BUILD" implementationClass="com.google.idea.blaze.base.lang.buildfile.findusages.BuildTargetElementEvaluator"/>
     <quoteHandler fileType="BUILD" className="com.google.idea.blaze.base.lang.buildfile.editor.BuildQuoteHandler"/>
     <enterHandlerDelegate implementation="com.google.idea.blaze.base.lang.buildfile.editor.BuildEnterBetweenBracketsHandler" order="before EnterBetweenBracesHandler"/>
@@ -411,6 +411,7 @@
   </project-components>
 
   <extensionPoints>
+    <extensionPoint qualifiedName="com.google.idea.blaze.BlazeBuildListener" interface="com.google.idea.blaze.base.build.BlazeBuildListener"/>
     <extensionPoint qualifiedName="com.google.idea.blaze.SyncListener" interface="com.google.idea.blaze.base.sync.SyncListener"/>
     <extensionPoint qualifiedName="com.google.idea.blaze.SimpleSyncListener" interface="com.google.idea.blaze.base.sync.SimpleSyncListener"/>
     <extensionPoint qualifiedName="com.google.idea.blaze.SyncPlugin" interface="com.google.idea.blaze.base.sync.BlazeSyncPlugin"/>
@@ -521,8 +522,18 @@
     <LoggedSettingsProvider implementation="com.google.idea.blaze.base.settings.BlazeUserSettings$SettingsLogger" id="BlazeUserSettingsLogger"/>
     <LoggedSettingsProvider implementation="com.google.idea.blaze.base.sync.autosync.AutoSyncSettings$SettingsLogger" order="after BlazeUserSettingsLogger"/>
     <TargetKindProvider implementation="com.google.idea.blaze.base.model.primitives.GenericBlazeRules"/>
-    <TestContextProvider implementation="com.google.idea.blaze.base.run.producers.VirtualFileTestContextProvider"/>
-    <TestContextProvider implementation="com.google.idea.blaze.base.run.producers.AllInPackageTestContextProvider"/>
+    <TestContextProvider
+        implementation="com.google.idea.blaze.base.run.producers.VirtualFileTestContextProvider"
+        order="last, before AllInBuildFileTestContextProvider, before AllInDirectoryRecursiveTestContextProvider"
+    />
+    <TestContextProvider
+        implementation="com.google.idea.blaze.base.run.producers.AllInBuildFileTestContextProvider"
+        id="AllInBuildFileTestContextProvider"
+        order="last"/>
+    <TestContextProvider
+        implementation="com.google.idea.blaze.base.run.producers.AllInDirectoryRecursiveTestContextProvider"
+        id="AllInDirectoryRecursiveTestContextProvider"
+        order="last"/>
     <OutputArtifactParser implementation="com.google.idea.blaze.base.command.buildresult.OutputArtifactParser$LocalFileParser"/>
     <BuildBatchingService implementation="com.google.idea.blaze.base.sync.sharding.LexicographicTargetSharder" order="last"/>
     <TargetShardSizeLimit implementation="com.google.idea.blaze.base.sync.sharding.ArgMaxShardSizeLimit"/>
@@ -535,4 +546,10 @@
     <CustomFormatter implementation="com.google.idea.blaze.base.buildmodifier.BuildifierCustomFormatter"/>
   </extensions>
 
+  <projectListeners>
+    <listener
+        class="com.google.idea.blaze.base.actions.ProjectFrameUpdater"
+        activeInHeadlessMode="false" activeInTestMode="false"
+        topic="com.intellij.openapi.project.ProjectManagerListener"/>
+  </projectListeners>
 </idea-plugin>

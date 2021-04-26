@@ -25,7 +25,7 @@ import com.google.idea.blaze.base.ideinfo.TargetMapBuilder;
 import com.google.idea.blaze.base.model.MockBlazeProjectDataBuilder;
 import com.google.idea.blaze.base.model.MockBlazeProjectDataManager;
 import com.google.idea.blaze.base.model.primitives.WorkspacePath;
-import com.google.idea.blaze.base.run.producer.BlazeRunConfigurationProducerTestCase;
+import com.google.idea.blaze.base.run.producers.BlazeRunConfigurationProducerTestCase;
 import com.google.idea.blaze.base.sync.data.BlazeProjectDataManager;
 import com.intellij.execution.lineMarker.RunLineMarkerContributor;
 import com.intellij.execution.lineMarker.RunLineMarkerContributor.Info;
@@ -56,7 +56,7 @@ public class BlazeJavaScriptTestRunLineMarkerContributorTest
   }
 
   @Test
-  public void testGetClosureTestInfo() {
+  public void testGetClosureTestInfo() throws Throwable {
     TargetMapBuilder targetMapBuilder =
         TargetMapBuilder.builder()
             .addTarget(
@@ -101,7 +101,7 @@ public class BlazeJavaScriptTestRunLineMarkerContributorTest
   }
 
   @Test
-  public void testGetClosureTestSuiteInfo() {
+  public void testGetClosureTestSuiteInfo() throws Throwable {
     TargetMapBuilder targetMapBuilder =
         TargetMapBuilder.builder()
             .addTarget(
@@ -151,7 +151,7 @@ public class BlazeJavaScriptTestRunLineMarkerContributorTest
   }
 
   @Test
-  public void testGetJasmineTestInfo() {
+  public void testGetJasmineTestInfo() throws Throwable {
     TargetMapBuilder targetMapBuilder =
         TargetMapBuilder.builder()
             .addTarget(

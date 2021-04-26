@@ -27,7 +27,7 @@ import com.google.idea.blaze.base.model.primitives.Label;
 import com.google.idea.blaze.base.model.primitives.TargetExpression;
 import com.google.idea.blaze.base.model.primitives.WorkspacePath;
 import com.google.idea.blaze.base.run.BlazeCommandRunConfiguration;
-import com.google.idea.blaze.base.run.producer.BlazeRunConfigurationProducerTestCase;
+import com.google.idea.blaze.base.run.producers.BlazeRunConfigurationProducerTestCase;
 import com.google.idea.blaze.base.run.producers.TestContextRunConfigurationProducer;
 import com.google.idea.blaze.base.run.state.BlazeCommandRunConfigurationCommonState;
 import com.google.idea.blaze.base.sync.data.BlazeProjectDataManager;
@@ -68,7 +68,7 @@ public class BlazeJavaTestClassConfigurationProducerTest
   }
 
   @Test
-  public void testProducedFromPsiFile() {
+  public void testProducedFromPsiFile() throws Throwable {
     PsiFile javaFile =
         createAndIndexFile(
             new WorkspacePath("java/com/google/test/TestClass.java"),
@@ -112,7 +112,7 @@ public class BlazeJavaTestClassConfigurationProducerTest
   }
 
   @Test
-  public void testProducedFromPsiClass() {
+  public void testProducedFromPsiClass() throws Throwable {
     PsiFile javaFile =
         createAndIndexFile(
             new WorkspacePath("java/com/google/test/TestClass.java"),
@@ -159,7 +159,7 @@ public class BlazeJavaTestClassConfigurationProducerTest
   }
 
   @Test
-  public void testProducedFromPsiClassWithInnerTestClass() {
+  public void testProducedFromPsiClassWithInnerTestClass() throws Throwable {
     PsiFile javaFile =
         createAndIndexFile(
             new WorkspacePath("java/com/google/test/OuterClass.java"),
@@ -212,7 +212,7 @@ public class BlazeJavaTestClassConfigurationProducerTest
   }
 
   @Test
-  public void testConfigFromContextRecognizesItsOwnConfig() {
+  public void testConfigFromContextRecognizesItsOwnConfig() throws Throwable {
     PsiFile javaFile =
         createAndIndexFile(
             new WorkspacePath("java/com/google/test/TestClass.java"),
@@ -246,7 +246,7 @@ public class BlazeJavaTestClassConfigurationProducerTest
   }
 
   @Test
-  public void testConfigWithDifferentLabelIgnored() {
+  public void testConfigWithDifferentLabelIgnored() throws Throwable {
     PsiFile javaFile =
         createAndIndexFile(
             new WorkspacePath("java/com/google/test/TestClass.java"),
@@ -283,7 +283,7 @@ public class BlazeJavaTestClassConfigurationProducerTest
   }
 
   @Test
-  public void testConfigWithDifferentFilterIgnored() {
+  public void testConfigWithDifferentFilterIgnored() throws Throwable {
     PsiFile javaFile =
         createAndIndexFile(
             new WorkspacePath("java/com/google/test/TestClass.java"),

@@ -61,6 +61,7 @@ public class BlazeCppAutoImportHelperTest extends BlazeCppResolvingTestCase {
 
     AutoImportItem importItem = getAutoImportItem(file, "SomeClass*");
     assertThat(importItem.getTitleAndLocation().getFirst()).isEqualTo("class 'SomeClass'");
+
     assertThat(importItem.getTitleAndLocation().getSecond()).isEqualTo("\"foo/bar/test.h\"");
   }
 

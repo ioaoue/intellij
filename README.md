@@ -30,7 +30,7 @@ Detailed docs are available [here](http://ij.bazel.build).
 
 Install Bazel, then build the target `*:*_bazel_zip` for your desired product:
 
-* `bazel build //ijwb:ijwb_bazel_zip --define=ij_product=intellij-latest`
+* `bazel build //ijwb:ijwb_bazel_zip --define=ij_product=intellij-ue-latest`
 * `bazel build //clwb:clwb_bazel_zip --define=ij_product=clion-latest`
 * `bazel build //aswb:aswb_bazel_zip --define=ij_product=android-studio-latest`
 
@@ -39,14 +39,22 @@ from the project root. This will create a plugin zip file at
 from the IDE. `<PRODUCT>` can be one of `ijwb, clwb, aswb`.
 
 If the IDE refuses to load the plugin because of version issues, specify the
-correct `ij_product`. These are in the form `<IDE>-<VERSION>` with `<IDE>`
-being one of `intellij, clion, android-studio`, and `<VERSION>` being one
-of `latest, beta`.
+correct `ij_product`. These are in the form `<IDE>-<VERSION>` with 
+  * `<IDE>` being one of `intellij-ue, intellij, clion, android-studio`, 
+  * `<VERSION>` being one of `latest, beta, canary`.
 
-If you are  using the most recent version of your IDE, you likely want
+Note that there is a difference between `intellij` and `intellij-ue`.
+`ue` stands for IntelliJ Ultimate Edition and contains additional 
+features for JavaScript as well as Go.
+
+If you are using the most recent version of your IDE, you likely want
 `--define=ij_product=<IDE>-beta` which will be the next version after
-`<IDE>-latest`.  A complete mapping of all currently defined versions can
-be found in  `intellij_platform_sdk/build_defs.bzl`.
+`<IDE>-latest`. Additionally, `canary` can be a largely untested `alpha` 
+build of an upcoming version. A complete mapping of all currently defined 
+versions can be found in  `intellij_platform_sdk/build_defs.bzl`.
+
+You can import the project into IntelliJ (with the Bazel plugin)
+via importing the `ijwb/ijwb.bazelproject` file.
 
 ## Contributions
 
