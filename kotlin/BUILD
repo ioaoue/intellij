@@ -20,12 +20,11 @@ java_library(
     deps = [
         "//base",
         "//common/experiments",
-        "//intellij_platform_sdk:jsr305",
+        "//intellij_platform_sdk:jsr305",  # unuseddeps: keep
         "//intellij_platform_sdk:kotlin",
         "//intellij_platform_sdk:plugin_api",
         "//java",
         "//proto:proto_deps",
-        "//sdkcompat",
     ],
 )
 
@@ -90,11 +89,14 @@ intellij_integration_test_suite(
         "//base",
         "//base:integration_test_utils",
         "//base:unit_test_utils",
+        "//common/experiments",
+        "//common/experiments:unit_test_utils",
         "//intellij_platform_sdk:kotlin_for_tests",
         "//intellij_platform_sdk:plugin_api_for_tests",
         "//intellij_platform_sdk:test_libs",
         "//java",
-        "//sdkcompat",
+        "//proto:proto_deps",
+        "//third_party/auto_value",
         "@junit//jar",
     ],
 )
